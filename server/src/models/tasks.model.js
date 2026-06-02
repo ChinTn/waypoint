@@ -23,6 +23,29 @@ const taskSchema = new mongoose.Schema(
     description: {
       type: String,
       default: "",
+      trim: true,
+    },
+
+    // Nested subtasks support
+    parentTaskId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Task",
+      default: null,
+    },
+
+    depth: {
+      type: Number,
+      default: 0,
+    },
+
+    hasChildren: {
+      type: Boolean,
+      default: false,
+    },
+
+    subTaskCount: {
+      type: Number,
+      default: 0,
     },
 
     assignedTo: {
@@ -36,6 +59,13 @@ const taskSchema = new mongoose.Schema(
       ref: "ProjectMember",
       required: true,
     },
+
+    watchers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ProjectMember",
+      },
+    ],
 
     status: {
       type: String,
@@ -76,19 +106,7 @@ const taskSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    
-    parentTaskId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Task",
-        default: null,
-    },
-
-    isSubTask: {
-        type: Boolean,
-        default: false,
-    },
   },
-  
   {
     timestamps: true,
   }
