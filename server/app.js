@@ -14,12 +14,21 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-// Import routes
-import userRouter from "./src/routes/user.routes.js";
+//Importing middleware
+import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 
-// Routes declaration
+// Import routes
+
+//Public routes
+import userRouter from "./src/routes/user.routes.js";
 app.use("/api/v1/users", userRouter);
 
+//Private routes
+import projectRouter from "./src/routes/projects.routes.js"
+app.use("/api/v1/projects", verifyJWT, projectRouter);
+
+import taskRouter from "./src/routes/task.routes.js";
+app.use("/api/v1/tasks", verifyJWT, taskRouter);
 
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;

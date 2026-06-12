@@ -1,2 +1,13 @@
 @import "tailwindcss";
 
+/* Completely hide scrollbars for seamless liquid glass look */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}

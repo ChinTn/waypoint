@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import api from '../api/axios';
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create(
+    persist(
+        (set) => ({
     user: null,
     isAuthenticated: false,
     isLoading: false,
@@ -43,7 +46,11 @@ const useAuthStore = create((set) => ({
         } catch (error) {
             set({ error: 'Logout failed', isLoading: false });
         }
+        }
+    }),
+    {
+        name: 'auth-storage'
     }
-}));
+));
 
 export default useAuthStore;

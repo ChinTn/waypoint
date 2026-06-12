@@ -17,9 +17,14 @@ const projectSchema = new Schema(
       default: "#3B82F6", // Default to a nice blue (e.g., Tailwind blue-500)
     },
     status: {
-      type: String,
-      enum: ["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"],
-      default: "PLANNING",
+        type: String,
+        enum: ["ACTIVE", "ON_HOLD", "COMPLETED", "ARCHIVED"],
+        default: "ACTIVE"
+    },
+    inviteToken: {
+        type: String,
+        unique: true,
+        sparse: true // Allows null/missing values while keeping uniqueness for actual tokens
     },
     startDate: {
       type: Date,
@@ -28,9 +33,19 @@ const projectSchema = new Schema(
     endDate: {
       type: Date,
     },
+    githubLink: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    deployedLink: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "ProjectMember", 
+      ref: "User", 
       required: true,
     },
     members: [
