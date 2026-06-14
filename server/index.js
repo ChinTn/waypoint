@@ -1,13 +1,14 @@
-// server/index.js
 import "dotenv/config";
 import connectDB from "./src/db/index.js";
-import { app } from "./app.js";
+// 1. CHANGE: We import the 'server' from our new socket file instead of 'app' from app.js
+import { server } from "./src/socket.js"; 
 
 const PORT = process.env.PORT || 8000;
 
 connectDB()
 .then(() => {
-    app.listen(PORT, () => {
+    // 2. CHANGE: We tell 'server' to listen, not 'app'
+    server.listen(PORT, () => {
         console.log(`⚙️ Server is running at port : ${PORT}`);
     });
 })

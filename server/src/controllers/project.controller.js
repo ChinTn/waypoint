@@ -6,6 +6,7 @@ import { ProjectMember } from "../models/projectmember.model.js";
 import { User } from "../models/user.model.js";
 import { z } from "zod";
 import crypto from 'crypto';
+import { getIO } from "../socket.js";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -96,7 +97,7 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
   if (!updatedProject) {
     throw new ApiError(404, "Project not found");
   }
-
+  getIO().to(projectId).emit("project_updated", updatedProject);
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project status updated"));
 });
 
@@ -133,6 +134,7 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Project not found");
   }
 
+  getIO().to(projectId).emit("project_updated", updatedProject);
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project updated successfully"));
 });
 
@@ -153,6 +155,7 @@ export const deleteProject = asyncHandler(async (req, res) => {
   await Project.findByIdAndDelete(projectId);
   await ProjectMember.deleteMany({ projectId });
 
+  getIO().to(projectId).emit("project_updated", updatedProject);
   return res.status(200).json(new ApiResponse(200, null, "Project deleted successfully"));
 });
 

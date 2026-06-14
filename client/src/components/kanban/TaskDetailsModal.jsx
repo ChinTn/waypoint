@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Send, Paperclip, CheckCircle2, Circle, Clock, MessageSquare, UserPlus } from 'lucide-react';
+import { X, Send, Paperclip, CheckCircle2, Circle, Clock, MessageSquare, UserPlus, ListTodo, Trash2, Plus } from 'lucide-react';
 import useTaskStore from '../../store/taskStore';
 import useProjectStore from '../../store/projectStore';
+import useAuthStore from '../../store/authStore';
+import socket from '../../api/socket';
 
 const TaskDetailsModal = ({ taskId, onClose }) => {
     const { fetchTaskDetails, addComment, uploadTaskFile, assignTask, unassignTask, updateTaskDetails } = useTaskStore();
-    const { currentProject, members } = useProjectStore();
+    const { members } = useProjectStore();
+    const { user } = useAuthStore();
     
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
     const [newComment, setNewComment] = useState("");
+    const [newSubtask, setNewSubtask] = useState("");
     const [uploading, setUploading] = useState(false);
     const [isEditingDesc, setIsEditingDesc] = useState(false);
     const [descText, setDescText] = useState("");
 
-    const myRole = currentProject?.myRole;
+    const myMembership = members.find(m => m.userId._id === user?._id);
+    const myRole = myMembership?.role || 'VIEWER';
 
     useEffect(() => {
         const loadDetails = async () => {
@@ -31,6 +36,32 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
         };
         loadDetails();
     }, [taskId, fetchTaskDetails]);
+
+        useEffect(() => {
+        // Listen for task changes
+        const handleTaskUpdate = (updatedTask) => {
+            if (updatedTask._id === taskId) {
+                // Merge the new data into our local state!
+                setTask(prev => ({ ...prev, ...updatedTask }));
+            }
+        };
+
+        // Listen for new comments
+        const handleNewComment = ({ taskId: commentTaskId, comment }) => {
+            if (commentTaskId === taskId) {
+                setTask(prev => ({ ...prev, comments: [...prev.comments, comment] }));
+            }
+        };
+
+        socket.on("task_updated", handleTaskUpdate);
+        socket.on("comment_added", handleNewComment);
+
+        return () => {
+            // Clean up the listeners when the modal closes
+            socket.off("task_updated", handleTaskUpdate);
+            socket.off("comment_added", handleNewComment);
+        };
+    }, [taskId]);
 
     const handleAddComment = async (e) => {
         e.preventDefault();
@@ -84,6 +115,56 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
             setTask(details);
         } catch (error) {
             console.error("Assign failed", error);
+        }
+    };
+
+    const handleUnassign = async (assigneeId) => {
+        try {
+            await unassignTask(taskId, assigneeId);
+            const details = await fetchTaskDetails(taskId);
+            setTask(details);
+        } catch (error) {
+            console.error("Unassign failed", error);
+        }
+    };
+
+    const handleAddSubtask = async (e) => {
+        e.preventDefault();
+        if (!newSubtask.trim() || myRole === 'VIEWER') return;
+        
+        const newSubtasks = [...(task.subtasks || []), { title: newSubtask, isCompleted: false }];
+        
+        try {
+            await updateTaskDetails(taskId, { subtasks: newSubtasks });
+            setTask(prev => ({ ...prev, subtasks: newSubtasks }));
+            setNewSubtask("");
+        } catch (error) {
+            console.error("Failed to add subtask", error);
+        }
+    };
+
+    const handleToggleSubtask = async (index) => {
+        if (myRole === 'VIEWER') return;
+        const newSubtasks = [...(task.subtasks || [])];
+        newSubtasks[index].isCompleted = !newSubtasks[index].isCompleted;
+        
+        try {
+            await updateTaskDetails(taskId, { subtasks: newSubtasks });
+            setTask(prev => ({ ...prev, subtasks: newSubtasks }));
+        } catch (error) {
+            console.error("Failed to toggle subtask", error);
+        }
+    };
+
+    const handleDeleteSubtask = async (index) => {
+        if (myRole === 'VIEWER') return;
+        const newSubtasks = task.subtasks.filter((_, i) => i !== index);
+        
+        try {
+            await updateTaskDetails(taskId, { subtasks: newSubtasks });
+            setTask(prev => ({ ...prev, subtasks: newSubtasks }));
+        } catch (error) {
+            console.error("Failed to delete subtask", error);
         }
     };
 
@@ -158,6 +239,73 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                         <div className="mb-10">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center">
+                                    <ListTodo size={14} className="mr-2" /> Subtasks
+                                </h3>
+                                {/* Progress Bar */}
+                                {task.subtasks?.length > 0 && (
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-32 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-[#3b82f6] transition-all duration-500"
+                                                style={{ width: `${Math.round((task.subtasks.filter(s => s.isCompleted).length / task.subtasks.length) * 100)}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs font-mono text-neutral-400">
+                                            {Math.round((task.subtasks.filter(s => s.isCompleted).length / task.subtasks.length) * 100)}%
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                {task.subtasks?.map((subtask, idx) => (
+                                    <div key={idx} className="flex items-center group bg-black/20 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                        <button 
+                                            onClick={() => handleToggleSubtask(idx)}
+                                            disabled={myRole === 'VIEWER'}
+                                            className={`flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center mr-3 transition-colors ${subtask.isCompleted ? 'bg-[#3b82f6] border-[#3b82f6] text-white' : 'border-neutral-600 hover:border-[#3b82f6] text-transparent'}`}
+                                        >
+                                            <CheckCircle2 size={12} className={subtask.isCompleted ? 'opacity-100' : 'opacity-0'} />
+                                        </button>
+                                        <span className={`flex-1 text-sm transition-colors ${subtask.isCompleted ? 'text-neutral-500 line-through' : 'text-neutral-200'}`}>
+                                            {subtask.title}
+                                        </span>
+                                        {myRole !== 'VIEWER' && (
+                                            <button 
+                                                onClick={() => handleDeleteSubtask(idx)}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {myRole !== 'VIEWER' && (
+                                    <form onSubmit={handleAddSubtask} className="mt-4 flex items-center bg-white/5 p-1 pl-4 rounded-xl border border-white/10 focus-within:border-[#3b82f6] transition-colors">
+                                        <Plus size={16} className="text-neutral-500 mr-2" />
+                                        <input 
+                                            type="text"
+                                            value={newSubtask}
+                                            onChange={(e) => setNewSubtask(e.target.value)}
+                                            placeholder="Add a subtask..."
+                                            className="flex-1 bg-transparent text-sm text-white py-2 outline-none"
+                                        />
+                                        <button 
+                                            type="submit"
+                                            disabled={!newSubtask.trim()}
+                                            className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-mono font-bold uppercase rounded-lg transition-colors"
+                                        >
+                                            Add
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mb-10">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center">
                                     <Paperclip size={14} className="mr-2" /> Attachments
                                 </h3>
                                 {myRole !== 'VIEWER' && (
@@ -197,12 +345,26 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                 <UserPlus size={14} className="mr-2" /> Assignees
                             </h3>
                             <div className="space-y-3 mb-4">
-                                {task.assignedTo?.map(assignee => (
-                                    <div key={assignee._id} className="flex items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                                        <img src={assignee.userId.avatar || `https://ui-avatars.com/api/?name=${assignee.userId.fullName}`} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-white/10" />
-                                        <span className="text-sm text-white font-medium">{assignee.userId.fullName}</span>
+                                {task.assignedTo?.map(assignee => {
+                                    // Check if user is allowed to unassign this person
+                                    const isMe = assignee.userId._id === user?._id;
+                                    const canUnassign = myRole === 'OWNER' || myRole === 'ADMIN' || isMe;
+                                    return (
+                                    <div key={assignee._id} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
+                                        <div className="flex items-center">
+                                            <img src={assignee.userId.avatar || `https://ui-avatars.com/api/?name=${assignee.userId.fullName}`} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-white/10" />
+                                            <span className="text-sm text-white font-medium">{assignee.userId.fullName}</span>
+                                        </div>
+                                        {canUnassign && myRole !== 'VIEWER' && (
+                                            <button 
+                                                onClick={() => handleUnassign(assignee._id)}
+                                                className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
                                     </div>
-                                ))}
+                                )})}
                                 {task.assignedTo?.length === 0 && (
                                     <p className="text-xs font-mono text-neutral-500">Unassigned</p>
                                 )}
@@ -218,11 +380,11 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                     <option value="" disabled>+ Assign Member</option>
                                     {availableMembersToAssign.map(member => {
                                         // RBAC check for rendering options
-                                        const isMe = member._id === currentProject?.myMembershipId;
+                                        const isMe = member.userId._id === user?._id;
                                         const canAssign = myRole === 'OWNER' || myRole === 'ADMIN' || isMe;
                                         
                                         if (canAssign) {
-                                            return <option key={member._id} value={member._id}>{member?.user?.fullName || 'Unknown User'} {isMe ? '(Me)' : ''}</option>;
+                                            return <option key={member._id} value={member._id}>{member.userId.fullName || 'Unknown User'} {isMe ? '(Me)' : ''}</option>;
                                         }
                                         return null;
                                     })}

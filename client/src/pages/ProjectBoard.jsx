@@ -4,6 +4,9 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import useTaskStore from '../store/taskStore';
 import useProjectStore from '../store/projectStore';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import socket from '../api/socket';
+
 import {
   DndContext,
   DragOverlay,
@@ -58,6 +61,46 @@ const ProjectBoard = () => {
     useEffect(() => {
         setLocalTasks(tasks);
     }, [tasks]);
+
+    useEffect(() => {
+        // 1. stablsih the tunnel to backend
+        socket.connect();
+
+        // 2. Tell the backend that which bucket we want to listen
+        socket.emit("join_project", projectId);
+        
+        // 3. Listen when someone creates a task!
+        socket.on("task_created", (newTask) => {
+            useTaskStore.setState((state) => {
+                // Prevent duplicate tasks if WE were the ones who created it
+                if(state.tasks.some(t => t._id === newTask._id)) return state;
+                return {task : [newTask, ...state.tasks]};
+            });
+            //Here we are using setState and not the function taken from store to update.. due to stale closure
+        });
+
+        // 4. LISTEN: When someone else drags a task, changes subtasks, or assigns!
+        socket.on("task_updated", (updatedTask) => {
+            // Zustand lets us directly manipulate global state without causing rendering bugs
+            useTaskStore.setState((state) => ({
+                tasks : state.tasks.map(task => task._id === updatedTask._id ? updatedTask : task)
+            }));
+        });
+
+        // 5. LISTEN: When someone changes the Project Name or Settings!
+        socket.on("project_updated", (updatedProject) => {
+            useProjectStore.setState((state) => ({
+            projects: state.projects.map(p => 
+                p._id === updatedProject._id ? { ...p, ...updatedProject } : p
+            )
+        }));
+});
+
+        // 6. CLEANUP: When we leave the page, sever the connection so we don't leak memory.
+        return () => {
+            socket.disconnect();
+        };
+    }, [projectId]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), 

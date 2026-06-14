@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Task } from "../models/tasks.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
+import { getIO } from "../socket.js";
 
 const createTaskSchema = z.object({
   projectId: z.string().min(1),
@@ -40,6 +41,9 @@ export const createTask = asyncHandler(async (req, res) => {
     priority: priority || "MEDIUM",
     assignedBy: membership._id,
   });
+  
+  // REALTIME: Broadcast the newly created task to everyone in the project room
+  getIO().to(projectId).emit("task_created", task);
 
   return res.status(201).json(new ApiResponse(201, task, "Task created successfully"));
 });
@@ -66,7 +70,7 @@ export const getProjectTasks = asyncHandler(async (req, res) => {
 // Used specifically for Drag and Drop (TASK-03)
 export const updateTaskStatus = asyncHandler(async (req, res) => {
   const { taskId } = req.params;
-  const { status, position, priority, title, description } = req.body; 
+  const { status, position, priority, title, description, subtasks } = req.body; 
 
   const task = await Task.findById(taskId);
   if (!task) {
@@ -89,13 +93,20 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
   if (priority) updateFields.priority = priority;
   if (title) updateFields.title = title;
   if (description !== undefined) updateFields.description = description;
+  if (subtasks !== undefined) updateFields.subtasks = subtasks;
 
   const updatedTask = await Task.findByIdAndUpdate(
     taskId,
     { $set: updateFields },
     { new: true } // Avoid full document validation on legacy tasks
-  );
+  ).populate({
+      path: 'assignedTo',
+      populate: { path: 'userId', select: 'fullName avatar' }
+  });
 
+  // Since updateTaskStatus only returns partial data, we might want to populate it fully. 
+  // But for simple drag-and-drop, broadcasting the updated fields is usually enough!
+  getIO().to(updatedTask.projectId.toString()).emit("task_updated", updatedTask);
   return res.status(200).json(new ApiResponse(200, updatedTask, "Task updated"));
 });
 
@@ -136,6 +147,12 @@ export const assignTask = asyncHandler(async (req, res) => {
       await task.save();
   }
 
+  await task.populate({
+      path: 'assignedTo',
+      populate: { path: 'userId', select: 'fullName avatar' }
+  });
+
+  getIO().to(task.projectId.toString()).emit("task_updated", task);
   return res.status(200).json(new ApiResponse(200, task, "Task assigned successfully"));
 });
 
@@ -163,6 +180,12 @@ export const unassignTask = asyncHandler(async (req, res) => {
   task.assignedTo = task.assignedTo.filter(id => id.toString() !== assigneeId);
   await task.save();
 
+  await task.populate({
+      path: 'assignedTo',
+      populate: { path: 'userId', select: 'fullName avatar' }
+  });
+
+  getIO().to(task.projectId.toString()).emit("task_updated", task);
   return res.status(200).json(new ApiResponse(200, task, "Assignment removed"));
 });
 

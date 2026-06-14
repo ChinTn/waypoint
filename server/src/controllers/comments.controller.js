@@ -5,6 +5,7 @@ import { Task } from "../models/tasks.model.js";
 import { TaskComment } from "../models/comments.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
+import { getIO } from "../socket.js";
 
 const addCommentSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
@@ -52,6 +53,11 @@ export const addComment = asyncHandler(async (req, res) => {
       populate: { path: 'userId', select: 'fullName avatar' }
     });
 
+  // We shout 'comment_added' so the frontend knows exactly what happened
+  getIO().to(task.projectId.toString()).emit("comment_added", { 
+    taskId, 
+    comment: populatedComment 
+  });
   return res.status(201).json(new ApiResponse(201, populatedComment, "Comment added"));
 });
 
