@@ -19,15 +19,60 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
     console.log(`🟢 User Connected: ${socket.id}`);
 
-    // NEW: Listen for the frontend telling us which project they opened
-    socket.on("join_project", (projectId) => {
-        // We use Socket.io's built-in room feature
-        socket.join(projectId);
-        console.log(`👤 User ${socket.id} joined Project Room: ${projectId}`);
+    socket.on("join_user", (userId) => {
+        const roomName = `user_${userId}`;
+        socket.join(roomName);
+        console.log(`🔔 NOTIF DEBUG: User ${userId} joined room "${roomName}" (socket: ${socket.id})`);
     });
 
-    socket.on("disconnect", () => {
+    // NEW: Listen for the frontend joining with their user data!
+    socket.on("join_project", async ({ projectId, user }) => {
+        socket.join(projectId);
+        // Save the user data directly inside the socket connection so we know who this is
+        socket.data.user = user;
+        socket.data.projectId = projectId;
+        
+        console.log(`👤 User ${user?.fullName} joined Project Room: ${projectId}`);
+
+        // Fetch ALL current sockets inside this specific room
+        const sockets = await io.in(projectId).fetchSockets();
+        
+        // Extract the user data from each socket
+        const onlineUsers = sockets.map(s => s.data.user).filter(Boolean);
+        
+        // Remove duplicate users (in case they have multiple tabs open)
+        const uniqueUsers = Array.from(new Map(onlineUsers.map(u => [u._id, u])).values());
+
+        // Shout the updated list to EVERYONE in the room
+        io.to(projectId).emit("online_users", uniqueUsers);
+    });
+
+    // When the user navigates away from a project board (without disconnecting)
+    socket.on("leave_project", async (projectId) => {
+        socket.leave(projectId);
+        socket.data.projectId = null;
+        console.log(`👋 Socket ${socket.id} left Project Room: ${projectId}`);
+
+        // Update the online users list for everyone still in the room
+        const sockets = await io.in(projectId).fetchSockets();
+        const onlineUsers = sockets.map(s => s.data.user).filter(Boolean);
+        const uniqueUsers = Array.from(new Map(onlineUsers.map(u => [u._id, u])).values());
+        io.to(projectId).emit("online_users", uniqueUsers);
+    });
+
+    socket.on("disconnect", async () => {
         console.log(`🔴 User Disconnected: ${socket.id}`);
+        const projectId = socket.data.projectId;
+        
+        if (projectId) {
+            // When someone disconnects, their socket is automatically removed from the room.
+            // We just need to fetch the remaining sockets and broadcast the new list!
+            const sockets = await io.in(projectId).fetchSockets();
+            const onlineUsers = sockets.map(s => s.data.user).filter(Boolean);
+            const uniqueUsers = Array.from(new Map(onlineUsers.map(u => [u._id, u])).values());
+            
+            io.to(projectId).emit("online_users", uniqueUsers);
+        }
     });
 });
 // 4. A helper function. We will use this in Step 2 inside your controllers 

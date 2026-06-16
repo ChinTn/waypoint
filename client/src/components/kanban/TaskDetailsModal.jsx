@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Paperclip, CheckCircle2, Circle, Clock, MessageSquare, UserPlus, ListTodo, Trash2, Plus } from 'lucide-react';
 import useTaskStore from '../../store/taskStore';
 import useProjectStore from '../../store/projectStore';
 import useAuthStore from '../../store/authStore';
 import socket from '../../api/socket';
+import DiscussionModal from './DiscussionModal';
 
 const TaskDetailsModal = ({ taskId, onClose }) => {
     const { fetchTaskDetails, addComment, uploadTaskFile, assignTask, unassignTask, updateTaskDetails } = useTaskStore();
@@ -18,6 +19,7 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
     const [uploading, setUploading] = useState(false);
     const [isEditingDesc, setIsEditingDesc] = useState(false);
     const [descText, setDescText] = useState("");
+    const [isDiscussionOpen, setIsDiscussionOpen] = useState(false);
 
     const myMembership = members.find(m => m.userId._id === user?._id);
     const myRole = myMembership?.role || 'VIEWER';
@@ -49,7 +51,11 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
         // Listen for new comments
         const handleNewComment = ({ taskId: commentTaskId, comment }) => {
             if (commentTaskId === taskId) {
-                setTask(prev => ({ ...prev, comments: [...prev.comments, comment] }));
+                setTask(prev => {
+                    // Prevent duplicates: if the comment is already in the array (e.g. from our own optimistic update), ignore it
+                    if (prev.comments?.some(c => c._id === comment._id)) return prev;
+                    return { ...prev, comments: [...(prev.comments || []), comment] };
+                });
             }
         };
 
@@ -63,14 +69,15 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
         };
     }, [taskId]);
 
-    const handleAddComment = async (e) => {
-        e.preventDefault();
-        if (!newComment.trim() || myRole === 'VIEWER') return;
+    const handleAddComment = async (content) => {
+        if (!content.trim() || myRole === 'VIEWER') return;
         
         try {
-            const comment = await addComment(taskId, newComment);
-            setTask(prev => ({ ...prev, comments: [...prev.comments, comment] }));
-            setNewComment("");
+            const comment = await addComment(taskId, content);
+            setTask(prev => {
+                if (prev.comments?.some(c => c._id === comment._id)) return prev;
+                return { ...prev, comments: [...(prev.comments || []), comment] };
+            });
         } catch (error) {
             console.error("Failed to add comment", error);
         }
@@ -392,61 +399,48 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                             )}
                         </div>
 
-                        {/* Comments Section */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center p-6 pb-2">
-                                <MessageSquare size={14} className="mr-2" /> Discussion
-                            </h3>
-                            
-                            {/* Comment Feed */}
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-                                {task.comments?.map(comment => (
-                                    <div key={comment._id} className="flex space-x-4">
-                                        <img src={comment.authorId.userId.avatar || `https://ui-avatars.com/api/?name=${comment.authorId.userId.fullName}`} alt="Avatar" className="w-8 h-8 rounded-full border border-white/10 flex-shrink-0" />
-                                        <div>
-                                            <div className="flex items-baseline space-x-2 mb-1">
-                                                <span className="text-sm font-semibold text-white">{comment.authorId.userId.fullName}</span>
-                                                <span className="text-[10px] font-mono text-neutral-500">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                                            </div>
-                                            <div className="text-sm text-neutral-300 bg-white/5 border border-white/5 p-4 rounded-2xl rounded-tl-sm leading-relaxed">
-                                                {comment.content}
-                                            </div>
-                                        </div>
+                        {/* Discussion Button */}
+                        <div className="p-6 border-b border-white/5 bg-black/10">
+                            <button 
+                                onClick={() => setIsDiscussionOpen(true)}
+                                className="w-full flex items-center justify-between p-5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-12 h-12 rounded-xl bg-[#3b82f6]/20 flex items-center justify-center border border-[#3b82f6]/30 group-hover:bg-[#3b82f6]/30 transition-colors">
+                                        <MessageSquare size={20} className="text-[#3b82f6]" />
                                     </div>
-                                ))}
-                                {task.comments?.length === 0 && (
-                                    <div className="text-center py-10">
-                                        <p className="text-sm font-mono text-neutral-500">No comments yet. Start the discussion!</p>
+                                    <div className="text-left">
+                                        <h3 className="text-sm font-bold text-white mb-0.5">Task Discussion</h3>
+                                        <p className="text-xs font-mono text-neutral-400">{task.comments?.length || 0} comments</p>
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Comment Input */}
-                            {myRole !== 'VIEWER' && (
-                                <div className="p-6 pt-4 border-t border-white/5 bg-black/40">
-                                    <form onSubmit={handleAddComment} className="relative">
-                                        <textarea 
-                                            value={newComment}
-                                            onChange={e => setNewComment(e.target.value)}
-                                            placeholder="Write a comment..."
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl pl-4 pr-12 py-4 text-sm text-white focus:outline-none focus:border-[#3b82f6] resize-none custom-scrollbar"
-                                            rows="2"
-                                        />
-                                        <button 
-                                            type="submit" 
-                                            disabled={!newComment.trim()}
-                                            className="absolute right-3 bottom-4 p-2 bg-[#3b82f6] text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-[#3b82f6] transition-colors"
-                                        >
-                                            <Send size={16} />
-                                        </button>
-                                    </form>
                                 </div>
-                            )}
+                                <div className="flex -space-x-2">
+                                    {task.comments?.slice(0, 3).map(c => (
+                                        <img key={c._id} src={c.authorId?.userId?.avatar || `https://ui-avatars.com/api/?name=${c.authorId?.userId?.fullName || 'User'}`} alt="" className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] object-cover" />
+                                    ))}
+                                    {task.comments?.length > 3 && (
+                                        <div className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-[9px] font-bold text-white z-0 relative">
+                                            +{task.comments.length - 3}
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
                         </div>
 
                     </div>
                 </div>
             </motion.div>
+
+            <AnimatePresence>
+                {isDiscussionOpen && (
+                    <DiscussionModal 
+                        comments={task.comments}
+                        onAddComment={handleAddComment}
+                        myRole={myRole}
+                        onClose={() => setIsDiscussionOpen(false)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -5,6 +5,7 @@ import { Task } from "../models/tasks.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
 import { getIO } from "../socket.js";
+import { createNotification } from "../utils/createNotification.js";
 
 const createTaskSchema = z.object({
   projectId: z.string().min(1),
@@ -107,6 +108,24 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
   // Since updateTaskStatus only returns partial data, we might want to populate it fully. 
   // But for simple drag-and-drop, broadcasting the updated fields is usually enough!
   getIO().to(updatedTask.projectId.toString()).emit("task_updated", updatedTask);
+
+  // NOTIFICATION: If the status changed, notify all assignees (except the person who made the change)
+  if (status && updatedTask.assignedTo?.length > 0) {
+      for (const member of updatedTask.assignedTo) {
+          const userId = member?.userId?._id || member?.userId;
+          if (userId && userId.toString() !== req.user._id.toString()) {
+              await createNotification({
+                  recipientId: userId,
+                  type: "TASK_STATUS_CHANGED",
+                  message: `${req.user.fullName} moved "${updatedTask.title}" to ${status}`,
+                  projectId: updatedTask.projectId,
+                  taskId: updatedTask._id,
+                  actorId: req.user._id,
+              });
+          }
+      }
+  }
+
   return res.status(200).json(new ApiResponse(200, updatedTask, "Task updated"));
 });
 
@@ -142,7 +161,7 @@ export const assignTask = asyncHandler(async (req, res) => {
   }
 
   // Add to assignedTo if not already there
-  if (!task.assignedTo.includes(assigneeId)) {
+  if (!task.assignedTo.some(id => id.toString() === assigneeId)) {
       task.assignedTo.push(assigneeId);
       await task.save();
   }
@@ -153,6 +172,20 @@ export const assignTask = asyncHandler(async (req, res) => {
   });
 
   getIO().to(task.projectId.toString()).emit("task_updated", task);
+
+  // NOTIFICATION: Tell the assignee they've been assigned (but not if they assigned themselves)
+  const assigneeUser = await ProjectMember.findById(assigneeId).populate('userId', '_id fullName');
+  if (assigneeUser && assigneeUser.userId._id.toString() !== req.user._id.toString()) {
+      await createNotification({
+          recipientId: assigneeUser.userId._id,
+          type: "TASK_ASSIGNED",
+          message: `${req.user.fullName} assigned you to "${task.title}"`,
+          projectId: task.projectId,
+          taskId: task._id,
+          actorId: req.user._id,
+      });
+  }
+
   return res.status(200).json(new ApiResponse(200, task, "Task assigned successfully"));
 });
 
@@ -187,6 +220,23 @@ export const unassignTask = asyncHandler(async (req, res) => {
 
   getIO().to(task.projectId.toString()).emit("task_updated", task);
   return res.status(200).json(new ApiResponse(200, task, "Assignment removed"));
+});
+
+export const getMyTasks = asyncHandler(async (req, res) => {
+    // 1. Get all memberships for this user across all projects
+    const memberships = await ProjectMember.find({ userId: req.user._id });
+    const membershipIds = memberships.map(m => m._id);
+
+    // 2. Find all tasks where this user is an assignee
+    const tasks = await Task.find({ assignedTo: { $in: membershipIds } })
+        .populate('projectId', 'name description') // Fetch project details for the badge
+        .populate({
+            path: 'assignedTo',
+            populate: { path: 'userId', select: 'fullName avatar' }
+        })
+        .sort({ createdAt: -1 });
+        //A user can be a member of 5 different projects, giving them 5 different ProjectMember._id values. $in says "find tasks where assignedTo contains ANY of these IDs."
+    return res.status(200).json(new ApiResponse(200, tasks, "My tasks fetched successfully"));
 });
 
 export const getTaskById = asyncHandler(async (req, res) => {

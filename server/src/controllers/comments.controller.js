@@ -6,6 +6,7 @@ import { TaskComment } from "../models/comments.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
 import { getIO } from "../socket.js";
+import { createNotification } from "../utils/createNotification.js";
 
 const addCommentSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
@@ -53,11 +54,28 @@ export const addComment = asyncHandler(async (req, res) => {
       populate: { path: 'userId', select: 'fullName avatar' }
     });
 
-  // We shout 'comment_added' so the frontend knows exactly what happened
   getIO().to(task.projectId.toString()).emit("comment_added", { 
     taskId, 
     comment: populatedComment 
   });
+
+  // NOTIFICATION: Notify all task assignees about the new comment (except the commenter)
+  if (task.assignedTo?.length > 0) {
+      const assignees = await ProjectMember.find({ _id: { $in: task.assignedTo } }).populate('userId', '_id');
+      for (const assignee of assignees) {
+          if (assignee.userId._id.toString() !== req.user._id.toString()) {
+              await createNotification({
+                  recipientId: assignee.userId._id,
+                  type: "TASK_COMMENT",
+                  message: `${req.user.fullName} commented on "${task.title}"`,
+                  projectId: task.projectId,
+                  taskId: task._id,
+                  actorId: req.user._id,
+              });
+          }
+      }
+  }
+
   return res.status(201).json(new ApiResponse(201, populatedComment, "Comment added"));
 });
 

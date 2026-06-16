@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createTask, getProjectTasks, updateTaskStatus, assignTask, unassignTask, getTaskById } from "../controllers/task.controller.js";
+import { createTask, getProjectTasks, updateTaskStatus, assignTask, unassignTask, getTaskById, getMyTasks } from "../controllers/task.controller.js";
 import { addComment, getTaskComments } from "../controllers/comments.controller.js";
 import { uploadTaskFile, getTaskFiles } from "../controllers/file.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -14,6 +14,9 @@ router.route("/").post(createTask);
 
 // Get all tasks for a specific project
 router.route("/project/:projectId").get(getProjectTasks);
+
+// Get my tasks globally (MUST be placed before /:taskId to avoid route conflict)
+router.route("/me").get(getMyTasks);
 
 // Get single task details
 router.route("/:taskId").get(getTaskById);

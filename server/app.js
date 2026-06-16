@@ -30,6 +30,12 @@ app.use("/api/v1/projects", verifyJWT, projectRouter);
 import taskRouter from "./src/routes/task.routes.js";
 app.use("/api/v1/tasks", verifyJWT, taskRouter);
 
+import notificationRouter from "./src/routes/notification.routes.js";
+app.use("/api/v1/notifications", verifyJWT, notificationRouter);
+
+import documentRouter from "./src/routes/document.routes.js";
+app.use("/api/v1/documents", verifyJWT, documentRouter);
+
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({

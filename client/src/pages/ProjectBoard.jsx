@@ -4,6 +4,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import useTaskStore from '../store/taskStore';
 import useProjectStore from '../store/projectStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import useAuthStore from '../store/authStore';
 
 import socket from '../api/socket';
 
@@ -40,6 +41,7 @@ const ProjectBoard = () => {
     const navigate = useNavigate();
     const { tasks, fetchTasks, updateTaskStatus, updateTaskPriority, createTask } = useTaskStore();
     const { projects, fetchProjectMembers } = useProjectStore();
+    const { user } = useAuthStore();
     
     const currentProject = projects.find(p => p._id === projectId);
 
@@ -48,6 +50,7 @@ const ProjectBoard = () => {
     const [selectedTaskId, setSelectedTaskId] = useState(null);
     const [newTask, setNewTask] = useState({ title: '', priority: 'MEDIUM' });
     const [activeTask, setActiveTask] = useState(null); 
+    const [onlineUsers, setOnlineUsers] = useState([]);
 
     const [localTasks, setLocalTasks] = useState([]);
 
@@ -67,8 +70,14 @@ const ProjectBoard = () => {
         socket.connect();
 
         // 2. Tell the backend that which bucket we want to listen
-        socket.emit("join_project", projectId);
+        if (user) {
+            socket.emit("join_project", { projectId, user });
+        }
         
+        socket.on("online_users", (users) => {
+            setOnlineUsers(users);
+        });
+
         // 3. Listen when someone creates a task!
         socket.on("task_created", (newTask) => {
             useTaskStore.setState((state) => {
@@ -96,9 +105,14 @@ const ProjectBoard = () => {
         }));
 });
 
-        // 6. CLEANUP: When we leave the page, sever the connection so we don't leak memory.
+        // 6. CLEANUP: When we leave the page, stop listening to project-specific events
+        //    but do NOT disconnect the socket — AppLayout needs it alive for notifications!
         return () => {
-            socket.disconnect();
+            socket.off("online_users");
+            socket.off("task_created");
+            socket.off("task_updated");
+            socket.off("project_updated");
+            socket.emit("leave_project", projectId);
         };
     }, [projectId]);
 
@@ -188,7 +202,7 @@ const ProjectBoard = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
                     <div className="flex items-center space-x-4 mb-6 md:mb-0">
-                        <button onClick={() => navigate('/dashboard')} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-neutral-400 hover:text-white transition-colors border border-white/5">
+                        <button onClick={() => navigate(`/project/${projectId}`)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-neutral-400 hover:text-white transition-colors border border-white/5" title="Back to Project Hub">
                             <ArrowLeft size={20} />
                         </button>
                         <div>
@@ -196,7 +210,30 @@ const ProjectBoard = () => {
                             <p className="text-neutral-500 font-mono text-sm mt-2">{currentProject?.description || "Manage your tasks efficiently."}</p>
                         </div>
                     </div>
-                    <div className="flex space-x-4">
+                    <div className="flex space-x-4 items-center">
+                        {/* ONLINE USERS AVATAR STACK */}
+                        {onlineUsers.length > 0 && (
+                            <div className="flex items-center mr-2 md:mr-6">
+                                <div className="flex -space-x-3">
+                                    {onlineUsers.slice(0, 5).map((u, i) => (
+                                        <div key={u._id} className="w-10 h-10 rounded-full border-2 border-[#0a0a0a] overflow-hidden relative" title={u.fullName} style={{ zIndex: 10 - i }}>
+                                            <img src={u.avatar || `https://ui-avatars.com/api/?name=${u.fullName}`} alt={u.fullName} className="w-full h-full object-cover" />
+                                            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0a]"></div>
+                                        </div>
+                                    ))}
+                                    {onlineUsers.length > 5 && (
+                                        <div className="w-10 h-10 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-xs font-bold text-white relative z-0">
+                                            +{onlineUsers.length - 5}
+                                        </div>
+                                    )}
+                                </div>
+                                <span className="hidden md:flex ml-3 text-[10px] font-mono text-emerald-400 uppercase tracking-[0.2em] items-center">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]"></span>
+                                    Live
+                                </span>
+                            </div>
+                        )}
+
                         {(currentProject?.myRole === 'OWNER' || currentProject?.myRole === 'ADMIN') && (
                             <button 
                                 onClick={() => setIsSettingsOpen(true)}
