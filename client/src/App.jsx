@@ -5,6 +5,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import ProjectOverview from './pages/ProjectOverview';
 import ProjectBoard from './pages/ProjectBoard';
 import ProjectDocuments from './pages/ProjectDocuments';
+import ProjectFlow from './pages/ProjectFlow';
 import JoinProject from './pages/JoinProject';
 import MyTasksPage from './pages/MyTasksPage';
 import AppLayout from './components/layout/AppLayout';
@@ -20,6 +21,7 @@ function App() {
         <Route path="/project/:projectId" element={<AppLayout><ProjectOverview /></AppLayout>} />
         <Route path="/project/:projectId/board" element={<AppLayout><ProjectBoard /></AppLayout>} />
         <Route path="/project/:projectId/documents" element={<AppLayout><ProjectDocuments /></AppLayout>} />
+        <Route path="/project/:projectId/flow" element={<AppLayout><ProjectFlow /></AppLayout>} />
         <Route path="/join/:token" element={<JoinProject />} />
         {/* Redirect root to auth by default */}
         <Route path="/" element={<Navigate to="/auth" replace />} />

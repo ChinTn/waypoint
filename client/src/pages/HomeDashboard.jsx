@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, FolderKanban, Activity, Clock, CheckCircle2 } from 'lucide-react';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
@@ -7,13 +7,50 @@ import { useNavigate } from 'react-router-dom';
 import ProjectCard from '../components/dashboard/ProjectCard';
 
 const HomeDashboard = () => {
-    const { projects, fetchProjects, isLoading } = useProjectStore();
+    const { projects, fetchProjects, isLoading, updateProject, deleteProject, createProject } = useProjectStore();
     const { user } = useAuthStore();
     const navigate = useNavigate();
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProjectId, setEditingProjectId] = useState(null);
+    const [newProject, setNewProject] = useState({ name: '', description: '', accentColor: '#3b82f6', status: 'ACTIVE', githubLink: '', deployedLink: '' });
+    const [isDeletePromptOpen, setIsDeletePromptOpen] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState(null);
+
     useEffect(() => {
         fetchProjects();
-    }, []);
+    }, [fetchProjects]);
+
+    const handleEditProject = (project) => {
+        setEditingProjectId(project._id);
+        setNewProject({ name: project.name, description: project.description, accentColor: project.accentColor || '#3b82f6', status: project.status, githubLink: project.githubLink || '', deployedLink: project.deployedLink || '' });
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteProject = (project) => {
+        setProjectToDelete(project);
+        setIsDeletePromptOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (projectToDelete) {
+            await deleteProject(projectToDelete._id);
+            setIsDeletePromptOpen(false);
+            setProjectToDelete(null);
+        }
+    };
+
+    const handleSaveProject = async (e) => {
+        e.preventDefault();
+        if (editingProjectId) {
+            await updateProject(editingProjectId, newProject);
+        } else {
+            await createProject(newProject);
+        }
+        setIsModalOpen(false);
+        setEditingProjectId(null);
+        setNewProject({ name: '', description: '', accentColor: '#3b82f6', status: 'ACTIVE', githubLink: '', deployedLink: '' });
+    };
 
     // Derived Metrics
     const activeProjects = projects.filter(p => p.status === 'ACTIVE').length;
@@ -106,7 +143,11 @@ const HomeDashboard = () => {
                         <motion.button 
                             whileHover={{ scale: 1.02, x: 5 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => navigate('/projects')}
+                            onClick={() => {
+                                setEditingProjectId(null);
+                                setNewProject({ name: '', description: '', accentColor: '#10b981', status: 'ACTIVE', githubLink: '', deployedLink: '' });
+                                setIsModalOpen(true);
+                            }}
                             className="w-full group relative overflow-hidden bg-gradient-to-br from-white/10 to-white/5 border border-white/10 p-6 rounded-[1.5rem] flex items-center space-x-5 hover:border-white/20 transition-all shadow-lg"
                         >
                             <div className="w-14 h-14 flex-shrink-0 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
@@ -146,8 +187,8 @@ const HomeDashboard = () => {
                                     <ProjectCard 
                                         project={project} 
                                         isDragging={false} 
-                                        onEdit={() => navigate('/projects')} 
-                                        onDelete={() => navigate('/projects')} 
+                                        onEdit={handleEditProject} 
+                                        onDelete={handleDeleteProject} 
                                     />
                                 </motion.div>
                             ))}
@@ -160,7 +201,11 @@ const HomeDashboard = () => {
                             <motion.button 
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => navigate('/projects')}
+                                onClick={() => {
+                                    setEditingProjectId(null);
+                                    setNewProject({ name: '', description: '', accentColor: '#10b981', status: 'ACTIVE', githubLink: '', deployedLink: '' });
+                                    setIsModalOpen(true);
+                                }}
                                 className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-3 rounded-full font-mono text-[10px] font-bold uppercase tracking-[0.2em] transition-colors relative z-10 shadow-lg"
                             >
                                 Get Started
@@ -169,6 +214,90 @@ const HomeDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* --- CREATE/EDIT PROJECT MODAL --- */}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="w-full max-w-md bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 p-8 rounded-[2rem] shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar"
+                        >
+                            <h2 className="font-serif text-2xl mb-6 text-white">{editingProjectId ? 'Edit Project' : 'Create Project'}</h2>
+                            <form onSubmit={handleSaveProject} className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">Project Name</label>
+                                    <input type="text" required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-full text-sm text-white focus:outline-none focus:border-[#3b82f6] transition-colors" placeholder="e.g. Website Redesign" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">Due Date (Optional)</label>
+                                    <input type="date" value={newProject.endDate} onChange={e => setNewProject({...newProject, endDate: e.target.value})} className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-full text-sm text-white focus:outline-none focus:border-[#3b82f6] transition-colors [color-scheme:dark]" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">Description (Optional)</label>
+                                    <textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-[1rem] text-sm text-white focus:outline-none focus:border-[#3b82f6] transition-colors h-16 resize-none custom-scrollbar" placeholder="Brief description..."></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">Accent Color</label>
+                                    <div className="flex items-center space-x-3 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
+                                        <input type="color" value={newProject.accentColor} onChange={e => setNewProject({...newProject, accentColor: e.target.value})} className="w-6 h-6 cursor-pointer bg-transparent border-none p-0 rounded-full" />
+                                        <span className="text-sm font-mono text-neutral-400 uppercase">{newProject.accentColor}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 mt-3">
+                                        <div>
+                                            <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">GitHub Link</label>
+                                            <input type="url" value={newProject.githubLink} onChange={e => setNewProject({...newProject, githubLink: e.target.value})} className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-full text-xs text-white focus:outline-none focus:border-[#3b82f6] transition-colors" placeholder="https://github.com/..." />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold font-mono text-neutral-500 mb-1.5 uppercase tracking-[0.2em]">Live Link</label>
+                                            <input type="url" value={newProject.deployedLink} onChange={e => setNewProject({...newProject, deployedLink: e.target.value})} className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-full text-xs text-white focus:outline-none focus:border-[#3b82f6] transition-colors" placeholder="https://..." />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 text-xs font-bold font-mono text-neutral-400 hover:text-white uppercase tracking-widest transition-colors">Cancel</button>
+                                    <motion.button 
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        type="submit" disabled={isLoading} className="bg-[#3b82f6] text-white px-6 py-2.5 font-sans text-xs tracking-widest uppercase font-semibold flex items-center transition-colors rounded-full shadow-[0_0_20px_rgba(255,90,0,0.3)] disabled:opacity-50"
+                                    >
+                                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                        {editingProjectId ? 'Save Changes' : 'Create'}
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* --- DELETE CONFIRMATION MODAL --- */}
+            <AnimatePresence>
+                {isDeletePromptOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-sm bg-[#0a0a0a]/90 backdrop-blur-3xl border border-red-500/20 p-8 rounded-[2rem] shadow-2xl text-center"
+                        >
+                            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6">
+                                <Trash2 className="w-8 h-8 text-red-500" />
+                            </div>
+                            <h2 className="font-serif text-2xl mb-2 text-white">Delete Project?</h2>
+                            <p className="text-sm text-neutral-400 mb-8 leading-relaxed">
+                                Are you absolutely sure you want to permanently delete <span className="text-white font-bold">"{projectToDelete?.name}"</span>? All tasks, documents, and flows will be destroyed. This cannot be undone.
+                            </p>
+                            <div className="flex space-x-3">
+                                <button onClick={() => setIsDeletePromptOpen(false)} className="flex-1 px-4 py-3 text-xs font-bold font-mono text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full uppercase tracking-widest transition-colors">Cancel</button>
+                                <button onClick={confirmDelete} className="flex-1 px-4 py-3 text-xs font-bold font-mono text-white bg-red-500 hover:bg-red-600 rounded-full uppercase tracking-widest shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-colors">Destroy</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </main>
     );
 };

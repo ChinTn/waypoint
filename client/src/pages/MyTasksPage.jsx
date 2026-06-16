@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Clock, AlertCircle, Play, CheckCircle2, ArrowRight } from 'lucide-react';
 import useTaskStore from '../store/taskStore';
 import { useNavigate } from 'react-router-dom';
+import TaskDetailsModal from '../components/kanban/TaskDetailsModal';
 
 const MyTasksPage = () => {
     const { myTasks, fetchMyTasks, isLoading } = useTaskStore();
     const navigate = useNavigate();
     const [filter, setFilter] = useState('ALL'); // ALL, TODO, IN_PROGRESS, IN_REVIEW, DONE
+    const [selectedTaskId, setSelectedTaskId] = useState(null);
 
     useEffect(() => {
         fetchMyTasks();
@@ -27,7 +29,7 @@ const MyTasksPage = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -4 }}
-            onClick={() => navigate(`/project/${task.projectId?._id}`)}
+            onClick={() => setSelectedTaskId(task._id)}
             className="group relative flex flex-col justify-between min-h-[160px] p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/10 cursor-pointer overflow-hidden backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
         >
             {/* Subtle top glossy highlight */}
@@ -153,6 +155,15 @@ const MyTasksPage = () => {
                     )}
                 </div>
             )}
+
+            <AnimatePresence>
+                {selectedTaskId && (
+                    <TaskDetailsModal 
+                        taskId={selectedTaskId} 
+                        onClose={() => setSelectedTaskId(null)} 
+                    />
+                )}
+            </AnimatePresence>
         </main>
     );
 };

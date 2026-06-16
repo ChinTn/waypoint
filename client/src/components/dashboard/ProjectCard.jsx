@@ -25,14 +25,16 @@ const ProjectCard = ({ project, isDragging, onEdit, onDelete }) => {
                     {project.myRole === 'OWNER' && (
                         <>
                             <button 
-                                onClick={(e) => { e.stopPropagation(); onEdit(project); }}
-                                className="p-1.5 text-neutral-400 hover:text-[#3b82f6] hover:bg-white/10 rounded-full transition-colors"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(project); }}
+                                className="p-1.5 text-neutral-400 hover:text-[#3b82f6] hover:bg-white/10 rounded-full transition-colors cursor-pointer relative z-50"
                             >
                                 <Edit2 className="w-4 h-4" />
                             </button>
                             <button 
-                                onClick={(e) => { e.stopPropagation(); onDelete(project); }}
-                                className="p-1.5 text-neutral-400 hover:text-red-400 hover:bg-white/10 rounded-full transition-colors"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(project); }}
+                                className="p-1.5 text-neutral-400 hover:text-red-400 hover:bg-white/10 rounded-full transition-colors cursor-pointer relative z-50"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>

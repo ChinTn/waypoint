@@ -36,6 +36,9 @@ app.use("/api/v1/notifications", verifyJWT, notificationRouter);
 import documentRouter from "./src/routes/document.routes.js";
 app.use("/api/v1/documents", verifyJWT, documentRouter);
 
+import flowRouter from "./src/routes/flow.routes.js";
+app.use("/api/v1/flows", verifyJWT, flowRouter);
+
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({

@@ -9,7 +9,7 @@ import DiscussionModal from './DiscussionModal';
 
 const TaskDetailsModal = ({ taskId, onClose }) => {
     const { fetchTaskDetails, addComment, uploadTaskFile, assignTask, unassignTask, updateTaskDetails } = useTaskStore();
-    const { members } = useProjectStore();
+    const { members, fetchProjectMembers } = useProjectStore();
     const { user } = useAuthStore();
     
     const [task, setTask] = useState(null);
@@ -30,6 +30,9 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                 const details = await fetchTaskDetails(taskId);
                 setTask(details);
                 setDescText(details.description || "");
+                if (details.projectId) {
+                    fetchProjectMembers(details.projectId._id || details.projectId);
+                }
             } catch (error) {
                 console.error(error);
             } finally {

@@ -12,7 +12,7 @@ const ProjectDocuments = () => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const { projects, members, fetchProjectMembers, fetchProjects } = useProjectStore();
-    const { documents, fetchDocuments, createDocument, updateDocument, deleteDocument, loading } = useDocumentStore();
+    const { documents, fetchDocuments, getDocumentById, createDocument, updateDocument, deleteDocument, loading } = useDocumentStore();
     
     const [activeDocId, setActiveDocId] = useState(null);
 
@@ -36,6 +36,13 @@ const ProjectDocuments = () => {
             setActiveDocId(null);
         }
     }, [documents, activeDocId]);
+
+    // Fetch the full content for the active document (since the sidebar list excludes the content to save bandwidth)
+    useEffect(() => {
+        if (activeDocId) {
+            getDocumentById(activeDocId);
+        }
+    }, [activeDocId, getDocumentById]);
 
     const activeDoc = documents.find(d => d._id === activeDocId);
 

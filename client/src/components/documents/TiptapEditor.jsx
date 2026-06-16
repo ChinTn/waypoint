@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -99,10 +99,13 @@ const TiptapEditor = ({ initialContent, onUpdate, editable = true }) => {
         },
     });
 
-    // Update editor content if another document is selected
+    // Only inject server content on the first render after data arrives!
+    // We do NOT want to constantly overwrite the editor while the user is actively typing.
+    const isFirstRender = useRef(true);
     useEffect(() => {
-        if (editor && initialContent !== editor.getHTML()) {
+        if (editor && isFirstRender.current && initialContent !== undefined) {
             editor.commands.setContent(initialContent || '');
+            isFirstRender.current = false;
         }
     }, [initialContent, editor]);
 
