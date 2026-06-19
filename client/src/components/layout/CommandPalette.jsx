@@ -125,7 +125,7 @@ const CommandPalette = () => {
                                 {results.tasks.map(task => (
                                     <button 
                                         key={task._id}
-                                        onClick={() => handleSelect(`/project/${task.projectId}`)}
+                                        onClick={() => handleSelect(`/project/${task.projectId}/board`)}
                                         className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors flex items-center group"
                                     >
                                         <ListTodo className="w-4 h-4 text-neutral-400 mr-3 group-hover:text-emerald-400 transition-colors" />
@@ -144,7 +144,7 @@ const CommandPalette = () => {
                                 {results.documents.map(doc => (
                                     <button 
                                         key={doc._id}
-                                        onClick={() => handleSelect(`/project/${doc.projectId}/docs`)}
+                                        onClick={() => handleSelect(`/project/${doc.projectId}/documents`)}
                                         className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors flex items-center group"
                                     >
                                         <FileText className="w-4 h-4 text-neutral-400 mr-3 group-hover:text-orange-400 transition-colors" />
