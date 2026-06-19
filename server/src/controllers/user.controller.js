@@ -4,6 +4,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
+import { redisClient } from "../utils/redis.js";
+
 // --- ZOD SCHEMAS (PRD: AUTH-01) ---
 const registerSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -23,8 +25,9 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    user.refreshToken = refreshToken; // Save refresh token to database
-    await user.save({ validateBeforeSave: false });
+    // Save to Redis instead of MongoDB!
+    // "EX", 604800 means it will auto-expire in 7 days (7 * 24 * 60 * 60 seconds)
+    await redisClient.set(`refresh_token:${userId}`, refreshToken, "EX", 604800);
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -113,17 +116,8 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 export const logoutUser = asyncHandler(async (req, res) => {
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $unset: {
-                refreshToken: 1
-            }
-        },
-        {
-            new: true
-        }
-    );
+    // Instantly wipe the token from Redis RAM
+    await redisClient.del(`refresh_token:${req.user._id}`);
 
     const options = {
         httpOnly: true,
