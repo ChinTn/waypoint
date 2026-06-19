@@ -23,7 +23,12 @@ import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 import userRouter from "./src/routes/user.routes.js";
 app.use("/api/v1/users", userRouter);
 
+
 //Private routes
+
+import searchRoutes from './src/routes/search.routes.js';
+app.use('/api/v1/search', verifyJWT, searchRoutes);
+
 import projectRouter from "./src/routes/projects.routes.js"
 app.use("/api/v1/projects", verifyJWT, projectRouter);
 

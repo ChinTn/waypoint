@@ -9,10 +9,12 @@ import ProjectFlow from './pages/ProjectFlow';
 import JoinProject from './pages/JoinProject';
 import MyTasksPage from './pages/MyTasksPage';
 import AppLayout from './components/layout/AppLayout';
+import CommandPalette from './components/layout/CommandPalette';
 
 function App() {
   return (
     <BrowserRouter>
+    <CommandPalette />
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/dashboard" element={<AppLayout><HomeDashboard /></AppLayout>} />
