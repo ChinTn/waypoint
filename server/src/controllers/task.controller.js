@@ -6,6 +6,7 @@ import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
 import { getIO } from "../socket.js";
 import { createNotification } from "../utils/createNotification.js";
+import { redisClient } from "../utils/redis.js";
 
 const createTaskSchema = z.object({
   projectId: z.string().min(1),
@@ -46,26 +47,41 @@ export const createTask = asyncHandler(async (req, res) => {
   // REALTIME: Broadcast the newly created task to everyone in the project room
   getIO().to(projectId).emit("task_created", task);
 
+  // Wipe the board's cache so the next load gets the new task updates
+  await redisClient.del(`project:${projectId}:tasks`);
+  
   return res.status(201).json(new ApiResponse(201, task, "Task created successfully"));
 });
 
 export const getProjectTasks = asyncHandler(async (req, res) => {
   const { projectId } = req.params;
 
-  // Security: Verify membership before sending data
-  const membership = await ProjectMember.findOne({
-    projectId,
-    userId: req.user._id
-  });
+  //Define the cache key for this specific project's board
+  const cachekey = `project:${projectId}:tasks`;
 
-  if (!membership) {
-    throw new ApiError(403, "Access denied. You are not in this project.");
+  //Check availibility in Redis
+  const cachedTasks = await redisClient.get(cachekey);
+
+  if(cachedTasks) {
+    console.log("Cache Hit !! Loaded kanban board from redis");
+    return res.status(200).json(
+      new ApiResponse(200 , JSON.parse(cachedTasks) , "Tasks fetched from cache")
+    );
   }
 
-  // Fetch all tasks for this project (sorted by position for Kanban dragging later)
-  const tasks = await Task.find({ projectId }).sort({ position: 1, createdAt: -1 });
+  //If Cache miss
+  console.log("Cache Miss !! Fetching kanban Board from the DB");
+  const tasks = await Task.find({projectId}).populate(
+    "assignees",
+    "name email avatarUrl"
+  );
 
-  return res.status(200).json(new ApiResponse(200, tasks, "Tasks fetched successfully"));
+  //Save to the Redis
+  await redisClient.set(cachekey , JSON.stringify(tasks) , "EX" , 30);
+
+  return res.status(200).json(
+    new ApiResponse(200, tasks , "Tasks fetched successfully")
+  );
 });
 
 // Used specifically for Drag and Drop (TASK-03)
@@ -126,6 +142,9 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
       }
   }
 
+  // Wipe the board's cache so the next load gets the new task updates
+  await redisClient.del(`project:${projectId}:tasks`);
+  
   return res.status(200).json(new ApiResponse(200, updatedTask, "Task updated"));
 });
 
@@ -186,6 +205,9 @@ export const assignTask = asyncHandler(async (req, res) => {
       });
   }
 
+  // Wipe the board's cache so the next load gets the new task updates
+  await redisClient.del(`project:${projectId}:tasks`);
+
   return res.status(200).json(new ApiResponse(200, task, "Task assigned successfully"));
 });
 
@@ -219,6 +241,10 @@ export const unassignTask = asyncHandler(async (req, res) => {
   });
 
   getIO().to(task.projectId.toString()).emit("task_updated", task);
+
+  // Wipe the board's cache so the next load gets the new task updates
+  await redisClient.del(`project:${projectId}:tasks`);
+  
   return res.status(200).json(new ApiResponse(200, task, "Assignment removed"));
 });
 
