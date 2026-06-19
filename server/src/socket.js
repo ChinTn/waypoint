@@ -1,6 +1,9 @@
 import { Server } from "socket.io";
 import http from "http";
 import { app } from "../app.js";
+import { WebSocketServer } from 'ws'; 
+import yUtils from 'y-websocket/bin/utils'; 
+const { setupWSConnection } = yUtils; 
 
 // 1. We wrap your existing Express 'app' inside a core Node 'http' server.
 // WebSockets require lower-level server access than Express provides by default.
@@ -14,6 +17,25 @@ const io = new Server(server, {
         credentials: true
     }
 });
+
+
+// --- NEW: Y.JS WEBSOCKET SERVER ---
+const wss = new WebSocketServer({ noServer: true });
+// Listen for HTTP upgrade requests
+server.on('upgrade', (request, socket, head) => {
+    // If the request is for our Y.js document collaboration...
+    if (request.url.startsWith('/yjs')) {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    }
+});
+// When a client connects to Y.js, let the library handle the document syncing automatically
+wss.on('connection', (ws, req) => {
+    console.log("📝 Y.js Collaborative Editor connected!");
+    setupWSConnection(ws, req);
+});
+
 
 // 3. Listen for users connecting!
 io.on("connection", (socket) => {

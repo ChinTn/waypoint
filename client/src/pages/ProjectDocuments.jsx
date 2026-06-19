@@ -6,6 +6,7 @@ import useDocumentStore from '../store/documentStore';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
 import TiptapEditor from '../components/documents/TiptapEditor';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const ProjectDocuments = () => {
     const { projectId } = useParams();
@@ -76,6 +77,7 @@ const ProjectDocuments = () => {
     if (!project) return null;
 
     return (
+        <ErrorBoundary>
         <main className="flex h-full w-full bg-[#0a0a0a] overflow-hidden">
             {/* LEFT SIDEBAR: Document List */}
             <div className="w-64 md:w-80 border-r border-white/5 bg-black/20 flex flex-col">
@@ -162,6 +164,7 @@ const ProjectDocuments = () => {
                         {/* Tiptap Rich Text Editor */}
                         <div className="flex-1 min-h-0 pb-12">
                             <TiptapEditor 
+                                documentId={activeDoc._id}
                                 initialContent={activeDoc.content} 
                                 onUpdate={handleContentUpdate} 
                                 editable={myRole !== 'VIEWER'} 
@@ -184,6 +187,7 @@ const ProjectDocuments = () => {
                 )}
             </div>
         </main>
+        </ErrorBoundary>
     );
 };
 
