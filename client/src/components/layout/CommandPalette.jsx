@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, FileText, ListTodo, FolderKanban, Loader2, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useSearchStore from '../../store/searchStore';
 
 const CommandPalette = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
+    const [isScrolled, setIsScrolled] = useState(false);
     const { results, isLoading, searchQuery, clearSearch } = useSearchStore();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Listen for CMD+K or CTRL+K
     useEffect(() => {
@@ -23,6 +25,15 @@ const CommandPalette = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Detect scroll for dynamic visibility
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     // Debounce the search input
@@ -46,10 +57,32 @@ const CommandPalette = () => {
         navigate(path);
     };
 
+    // Determine the button's position and visibility
+    const isMainDashboard = location.pathname === '/dashboard';
+    const isProjectsPage = location.pathname === '/projects';
+    
+    let containerClasses = "fixed z-50 transition-all duration-300 ";
+    
+    if (isMainDashboard) {
+        // Main Overview: Corner (Bottom Right)
+        containerClasses += "bottom-6 right-6 opacity-100 translate-y-0";
+    } else if (isProjectsPage) {
+        // Projects Dashboard: Top Center, Permanently visible
+        containerClasses += "top-6 left-1/2 -translate-x-1/2 opacity-100 translate-y-0";
+    } else {
+        // Other Pages: Top Center, visible ONLY when scrolled down
+        containerClasses += "top-6 left-1/2 -translate-x-1/2 ";
+        if (isScrolled) {
+            containerClasses += "opacity-100 translate-y-0";
+        } else {
+            containerClasses += "opacity-0 -translate-y-10 pointer-events-none";
+        }
+    }
+
     return (
         <>
             {/* Persistent Floating Search Bar */}
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+            <div className={containerClasses}>
                 <button 
                     onClick={() => setIsOpen(true)}
                     className="flex items-center space-x-3 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-full shadow-lg hover:bg-white/5 hover:border-white/20 transition-all group w-[300px]"

@@ -7,6 +7,8 @@ import { User } from "../models/user.model.js";
 import { z } from "zod";
 import crypto from 'crypto';
 import { getIO } from "../socket.js";
+import { redisClient } from "../utils/redis.js";
+import mongoose from "mongoose";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -54,20 +56,28 @@ export const createProject = asyncHandler(async (req, res) => {
 
 
 export const getUserProjects = asyncHandler(async (req, res) => {
-  // 1. Find all memberships for the logged-in user
-  const memberships = await ProjectMember.find({ userId: req.user._id })
-    .populate({
-      path: "projectId", // Pulls in the full project details
-      select: "name description accentColor status members createdAt githubLink deployedLink",
-    });
+  //define a unique cache key for  this specific user
+  const cachekey = `user:${req.user._id}:projects`;
 
-  // 2. Format the response to be clean for the frontend
-  const projects = memberships.map(membership => ({
-    ...membership.projectId._doc, // Spread the project data
-    myRole: membership.role // Tell the frontend what role the user has
-  }));
+  //Now check if Projects are already in Redis RAM
+  const cachedProjects = await redisClient.get(cachekey);
 
-  return res.status(200).json(new ApiResponse(200, projects, "Projects fetched successfully"));
+  if(cachedProjects){
+    console.log("Cache Hit Getting Projects From Redis Cache");
+    //Parse Json strring into Object and return
+    return res.status(200).json(
+      new ApiResponse(200 , JSON.parse(cachedProjects) , "Projects fetched from the Cache")
+    );
+  }
+
+  //Cache Miss so we will go to the DB for the Projects
+  const memberships = await ProjectMember.find({userId : req.user._id}).populate("projectId");
+  const projects = memberships.map((member) => (member.projectId));
+
+  //Save the result into the redis for the next time
+  await redisClient.set(cachekey , JSON.stringify(projects) , "EX" , 60);
+
+  return res.status(200).json(new ApiResponse(200 , projects , "Projects fetched from the DB"));
 });
 
 export const updateProjectStatus = asyncHandler(async (req, res) => {
@@ -98,6 +108,10 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Project not found");
   }
   getIO().to(projectId).emit("project_updated", updatedProject);
+
+  //Since now Our Redis is outdated
+  await redisClient.del(`user:${req.user._id}:projects`);
+
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project status updated"));
 });
 
@@ -135,6 +149,9 @@ export const updateProject = asyncHandler(async (req, res) => {
   }
 
   getIO().to(projectId).emit("project_updated", updatedProject);
+
+  await redisClient.del(`user:${req.user._id}:projects`);
+
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project updated successfully"));
 });
 
@@ -156,6 +173,9 @@ export const deleteProject = asyncHandler(async (req, res) => {
   await ProjectMember.deleteMany({ projectId });
 
   getIO().to(projectId).emit("project_updated", updatedProject);
+
+  await redisClient.del(`user:${req.user._id}:projects`);
+  
   return res.status(200).json(new ApiResponse(200, null, "Project deleted successfully"));
 });
 
