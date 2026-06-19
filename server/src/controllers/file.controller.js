@@ -4,7 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Task } from "../models/tasks.model.js";
 import { TaskFile } from "../models/files.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadToS3 } from "../utils/s3.js";
 
 export const uploadTaskFile = asyncHandler(async (req, res) => {
   const { taskId } = req.params;
@@ -32,11 +32,11 @@ export const uploadTaskFile = asyncHandler(async (req, res) => {
       throw new ApiError(403, "Viewers cannot upload files");
   }
 
-  // Upload to cloudinary
-  const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
+  // Upload to Cloudflare R2 / S3
+  const s3Response = await uploadToS3(req.file.path, req.file.originalname, req.file.mimetype);
   
-  if (!cloudinaryResponse) {
-    throw new ApiError(500, "Failed to upload file to Cloudinary");
+  if (!s3Response) {
+    throw new ApiError(500, "Failed to upload file to Cloudflare R2");
   }
 
   // Save metadata to DB
@@ -44,10 +44,10 @@ export const uploadTaskFile = asyncHandler(async (req, res) => {
     taskId,
     uploadedBy: membership._id,
     fileName: req.file.originalname,
-    fileUrl: cloudinaryResponse.secure_url,
+    fileUrl: s3Response.secure_url,
     fileType: req.file.mimetype,
     fileSize: req.file.size,
-    publicId: cloudinaryResponse.public_id,
+    publicId: s3Response.public_id,
   });
 
   const populatedFile = await TaskFile.findById(taskFile._id).populate({

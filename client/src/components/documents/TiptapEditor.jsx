@@ -4,6 +4,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Code } from 'lucide-react';
 
+
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
+import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
+import useAuthStore from '../../store/authStore';
+
 const MenuBar = ({ editor }) => {
     if (!editor) return null;
 
@@ -74,65 +81,61 @@ const MenuBar = ({ editor }) => {
     );
 };
 
-const TiptapEditor = ({ initialContent, onUpdate, editable = true }) => {
-    // We use a local state to prevent sending updates on every keystroke
-    const [saving, setSaving] = useState(false);
+// The actual Editor that runs ONLY when provider is ready
+const Editor = ({ ydoc, provider, initialContent, onUpdate, editable }) => {
+    const { user } = useAuthStore();
 
     const editor = useEditor({
+        editable,
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                history: false, // CRITICAL: Y.js handles history itself!
+            }),
             Placeholder.configure({
-                placeholder: 'Start writing your document...',
-                emptyEditorClass: 'is-editor-empty',
+                placeholder: 'Start writing your brilliant documentation...',
+            }),
+            Collaboration.configure({
+                document: ydoc,
+            }),
+            CollaborationCursor.configure({
+                provider: provider,
+                user: {
+                    name: user?.fullName || 'Anonymous',
+                    color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                },
             }),
         ],
-        content: initialContent || '',
-        editable: editable,
         onUpdate: ({ editor }) => {
-            const html = editor.getHTML();
-            debouncedUpdate(html);
-        },
-        editorProps: {
-            attributes: {
-                class: 'prose prose-invert prose-blue max-w-none focus:outline-none min-h-[400px]',
-            },
-        },
-    });
+            // Keep the debounced saving logic so it persists to MongoDB!
+            if (onUpdate) {
+                onUpdate(editor.getHTML());
+            }
+        }
+    }, [provider, editable]); 
 
-    // Only inject server content on the first render after data arrives!
-    // We do NOT want to constantly overwrite the editor while the user is actively typing.
+    // We only inject initialContent once, and only if Y.js hasn't synced anything yet
     const isFirstRender = useRef(true);
     useEffect(() => {
         if (editor && isFirstRender.current && initialContent !== undefined) {
-            editor.commands.setContent(initialContent || '');
+            // Wait a split second to see if Y.js syncs data from other users first
+            setTimeout(() => {
+                if (editor.getText().trim() === '') {
+                    editor.commands.setContent(initialContent || '');
+                }
+            }, 100);
             isFirstRender.current = false;
         }
     }, [initialContent, editor]);
 
-    // Simple debounce to save content 1.5s after user stops typing
-    const debouncedUpdate = useCallback(
-        (() => {
-            let timeout;
-            return (html) => {
-                clearTimeout(timeout);
-                setSaving(true);
-                timeout = setTimeout(async () => {
-                    await onUpdate(html);
-                    setSaving(false);
-                }, 1500);
-            };
-        })(),
-        [onUpdate]
-    );
+    if (!editor) {
+        return <div className="p-8 text-neutral-500 font-mono text-sm animate-pulse">Initializing editor...</div>;
+    }
 
     return (
-        <div className="flex flex-col h-full bg-white/[0.02] border border-white/10 rounded-3xl p-8">
-            <div className="flex justify-between items-center mb-2">
-                <MenuBar editor={editor} />
-                {saving && <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest animate-pulse">Saving...</span>}
-            </div>
+        <div className="w-full max-w-4xl mx-auto h-full flex flex-col pt-8 px-4">
+            {editable && <MenuBar editor={editor} />}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <EditorContent editor={editor} />
+                <EditorContent editor={editor} className="min-h-full pb-32" />
             </div>
             
             {/* Some CSS specifically for Tiptap's output so it matches the theme */}
@@ -148,6 +151,44 @@ const TiptapEditor = ({ initialContent, onUpdate, editable = true }) => {
                 .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #52525b; pointer-events: none; height: 0; }
             `}</style>
         </div>
+    );
+};
+
+// The wrapper that handles the Y.js connection
+//Part A: The Connection Wrapper (TiptapEditor)
+const TiptapEditor = ({ documentId, initialContent, onUpdate, editable = true }) => {
+    const [provider, setProvider] = useState(null);
+    const [ydoc] = useState(() => new Y.Doc());
+
+    useEffect(() => {
+        if (!documentId) return;
+
+        // Connect to the backend WebSocket
+        const wsProvider = new WebsocketProvider(
+            'ws://localhost:8000/yjs', // Our custom path
+            documentId, // The room name
+            ydoc
+        );
+
+        setProvider(wsProvider);
+
+        return () => {
+            wsProvider.destroy(); // Clean up when leaving
+        };
+    }, [documentId, ydoc]);
+
+    if (!provider) {
+        return <div className="p-8 text-neutral-500 font-mono text-sm animate-pulse">Connecting to collaborative session...</div>;
+    }
+
+    return (
+        <Editor 
+            ydoc={ydoc} 
+            provider={provider} 
+            initialContent={initialContent} 
+            onUpdate={onUpdate} 
+            editable={editable} 
+        />
     );
 };
 
