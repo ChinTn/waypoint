@@ -15,6 +15,9 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+// Protected routes
+router.use(verifyJWT);
+
 // Create a new project
 router.route("/").post(createProject);
 

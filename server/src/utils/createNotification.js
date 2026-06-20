@@ -1,5 +1,4 @@
-import { Notification } from "../models/notification.model.js";
-import { getIO } from "../socket.js";
+import { notificationQueue } from "./queue.js";
 
 /**
  * Creates a notification in the database and pushes it to the user in real-time via Socket.io.
@@ -14,28 +13,27 @@ import { getIO } from "../socket.js";
  */
 export const createNotification = async ({ recipientId, type, message, projectId, taskId, actorId }) => {
     try {
-        // 1. Save it to the database
-        const notification = await Notification.create({
-            recipient: recipientId,
+        // We offload the heavy database write and socket emission to our BullMQ worker!
+        // This makes the primary API request (like assigning a task) instantly return to the user.
+        await notificationQueue.add("processNotification", {
+            recipientId,
             type,
             message,
             projectId,
             taskId,
-            actor: actorId,
+            actorId
+        }, {
+            removeOnComplete: true, // Keep Redis memory clean
+            attempts: 3, // Retry up to 3 times if it fails
+            backoff: {
+                type: 'exponential',
+                delay: 1000
+            }
         });
-
-        // 2. Populate the actor's name and avatar so the frontend can display them instantly
-        const populated = await Notification.findById(notification._id)
-            .populate("actor", "fullName avatar")
-            .populate("projectId", "name");
-
-        // 3. Push it to the user's personal socket room in real-time!
-        // Each user joins a room named after their own User._id when they connect.
-        const roomName = `user_${recipientId.toString()}`;
-        console.log(`📤 NOTIF DEBUG: Emitting to room "${roomName}", type: ${type}, message: ${message}`);
-        getIO().to(roomName).emit("new_notification", populated);
+        
+        console.log(`🚀 Queued notification for user ${recipientId}`);
     } catch (error) {
         // We never want notification failures to crash the main request
-        console.error("Failed to create notification:", error.message);
+        console.error("Failed to queue notification:", error.message);
     }
 };

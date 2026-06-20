@@ -17,6 +17,20 @@ const useProjectStore = create((set) => ({
         }
     },
 
+    syncProject: (updatedProject) => {
+        set((state) => ({
+            projects: state.projects.map(project => 
+                project._id === updatedProject._id ? { ...project, ...updatedProject } : project
+            )
+        }));
+    },
+
+    removeProject: (projectId) => {
+        set((state) => ({
+            projects: state.projects.filter(project => project._id !== projectId)
+        }));
+    },
+
     createProject: async (projectData) => {
         set({ isLoading: true, error: null });
         try {
@@ -93,9 +107,9 @@ const useProjectStore = create((set) => ({
         }
     },
 
-    generateInviteLink: async (projectId) => {
+    generateInviteLink: async (projectId, email) => {
         try {
-            const response = await api.post(`/projects/${projectId}/invite`);
+            const response = await api.post(`/projects/${projectId}/invite`, { email });
             return response.data.data.inviteToken;
         } catch (error) {
             console.error("Failed to generate invite", error);

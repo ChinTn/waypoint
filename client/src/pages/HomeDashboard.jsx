@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FolderKanban, Activity, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, FolderKanban, Activity, Clock, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import ProjectCard from '../components/dashboard/ProjectCard';
 
 const HomeDashboard = () => {
-    const { projects, fetchProjects, isLoading, updateProject, deleteProject, createProject } = useProjectStore();
+    const { projects = [], fetchProjects, isLoading, updateProject, deleteProject, createProject } = useProjectStore();
     const { user } = useAuthStore();
     const navigate = useNavigate();
 
@@ -53,12 +53,14 @@ const HomeDashboard = () => {
     };
 
     // Derived Metrics
-    const activeProjects = projects.filter(p => p.status === 'ACTIVE').length;
-    const completedProjects = projects.filter(p => p.status === 'COMPLETED').length;
-    const planningProjects = projects.filter(p => p.status === 'PLANNING').length;
+    const validProjects = (projects || []).filter(p => p !== null && p !== undefined);
+
+    const activeProjects = validProjects.filter(p => p.status === 'ACTIVE').length;
+    const completedProjects = validProjects.filter(p => p.status === 'COMPLETED').length;
+    const planningProjects = validProjects.filter(p => p.status === 'PLANNING').length;
 
     // Get 3 most recently created/updated projects
-    const recentProjects = [...projects]
+    const recentProjects = [...validProjects]
         .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
         .slice(0, 3);
 
@@ -93,7 +95,7 @@ const HomeDashboard = () => {
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 {[
-                    { title: 'Total Projects', value: projects.length, icon: FolderKanban, color: 'text-white' },
+                    { title: 'Total Projects', value: validProjects.length, icon: FolderKanban, color: 'text-white' },
                     { title: 'Active', value: activeProjects, icon: Activity, color: 'text-[#3b82f6]' },
                     { title: 'Planning', value: planningProjects, icon: Clock, color: 'text-amber-400' },
                     { title: 'Completed', value: completedProjects, icon: CheckCircle2, color: 'text-emerald-400' },
@@ -173,7 +175,7 @@ const HomeDashboard = () => {
                         <div className="flex-1 flex items-center justify-center border border-white/5 rounded-[2rem] bg-black/20">
                             <span className="text-neutral-500 font-mono uppercase tracking-widest text-xs">Loading...</span>
                         </div>
-                    ) : recentProjects.length > 0 ? (
+                    ) : validProjects.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {recentProjects.map((project, i) => (
                                 <motion.div 

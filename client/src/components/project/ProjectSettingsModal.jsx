@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, Check, Shield, User, ShieldAlert, Trash2 } from 'lucide-react';
+import { X, Copy, Check, Shield, User, ShieldAlert, Trash2, Loader2 } from 'lucide-react';
 import useProjectStore from '../../store/projectStore';
 import useAuthStore from '../../store/authStore';
 
@@ -11,6 +11,7 @@ const ProjectSettingsModal = ({ projectId, onClose }) => {
     
     const [copied, setCopied] = useState(false);
     const [loadingInvite, setLoadingInvite] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState('');
 
     const myMembership = members.find(m => m.userId._id === user?._id);
     const myRole = myMembership?.role || currentProject?.myRole;
@@ -18,7 +19,7 @@ const ProjectSettingsModal = ({ projectId, onClose }) => {
     const handleCopyInvite = async () => {
         try {
             setLoadingInvite(true);
-            const token = await generateInviteLink(projectId);
+            const token = await generateInviteLink(projectId, inviteEmail);
             const inviteUrl = `${window.location.origin}/join/${token}`;
             await navigator.clipboard.writeText(inviteUrl);
             setCopied(true);
@@ -69,9 +70,19 @@ const ProjectSettingsModal = ({ projectId, onClose }) => {
                     <div className="bg-white/5 border border-white/10 p-6 rounded-3xl">
                         <h3 className="text-sm font-bold font-mono text-white mb-2 uppercase tracking-widest">Invite Members</h3>
                         <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-                            Generate a secure invite link. Anyone with this link can join your project as a member.
+                            Generate a secure invite link. Enter an email to send it directly, or just copy the link.
                         </p>
                         
+                        <div className="flex space-x-3 mb-4">
+                            <input 
+                                type="email" 
+                                placeholder="Email address (optional)"
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                                className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:border-[#3b82f6]/50 focus:ring-1 focus:ring-[#3b82f6]/50 text-sm font-mono transition-all"
+                            />
+                        </div>
+
                         <button 
                             onClick={handleCopyInvite}
                             disabled={loadingInvite}
@@ -84,9 +95,9 @@ const ProjectSettingsModal = ({ projectId, onClose }) => {
                             {loadingInvite ? (
                                 <span className="animate-pulse">Generating...</span>
                             ) : copied ? (
-                                <><Check size={16} className="mr-2" /> Copied to Clipboard!</>
+                                <><Check size={16} className="mr-2" /> Copied!</>
                             ) : (
-                                <><Copy size={16} className="mr-2" /> Copy Invite Link</>
+                                <><Copy size={16} className="mr-2" /> {inviteEmail ? 'Copy & Send Invite' : 'Copy Invite Link'}</>
                             )}
                         </button>
                     </div>

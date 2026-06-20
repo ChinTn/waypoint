@@ -384,7 +384,7 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                             {myRole !== 'VIEWER' && availableMembersToAssign.length > 0 && (
                                 <select 
                                     onChange={handleAssign}
-                                    defaultValue=""
+                                    value=""
                                     className="w-full bg-black/40 border border-white/10 text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-[#3b82f6] appearance-none"
                                 >
                                     <option value="" disabled>+ Assign Member</option>

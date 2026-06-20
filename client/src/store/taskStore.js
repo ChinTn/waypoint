@@ -30,8 +30,11 @@ const useTaskStore = create((set) => ({
     createTask: async (taskData) => {
         try {
             const response = await api.post('/tasks', taskData);
-            // Append the newly created task instantly
-            set((state) => ({ tasks: [response.data.data, ...state.tasks] }));
+            // Append the newly created task instantly if the socket hasn't already added it
+            set((state) => {
+                if (state.tasks.some(t => t._id === response.data.data._id)) return state;
+                return { tasks: [response.data.data, ...state.tasks] };
+            });
         } catch (error) {
             console.error(error);
         }

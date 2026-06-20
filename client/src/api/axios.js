@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api/v1',
+    baseURL: `${API_URL}/api/v1`,
     withCredentials: true // This is crucial for sending our httpOnly cookies!
 });
 
@@ -17,14 +19,16 @@ api.interceptors.response.use(
             
             try {
                 // Attempt to refresh the token directly via axios (so it doesn't trigger an infinite loop)
-                await axios.post('http://localhost:8000/api/v1/users/refresh-token', {}, {
+                await axios.post(`${API_URL}/api/v1/users/refresh-token`, {}, {
                     withCredentials: true
                 });
                 
                 // If successful, retry the original request
                 return api(originalRequest);
             } catch (refreshError) {
-                // If refresh fails, they need to log in again
+                // If refresh fails, they need to log in again. Force automatic logout!
+                localStorage.removeItem('auth-storage'); // Clear Zustand persisted state
+                window.location.href = '/auth'; // Redirect to login
                 return Promise.reject(refreshError);
             }
         }

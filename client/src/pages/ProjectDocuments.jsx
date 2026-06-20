@@ -12,7 +12,7 @@ const ProjectDocuments = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const { projects, members, fetchProjectMembers, fetchProjects } = useProjectStore();
+    const { projects, members, fetchProjectMembers, fetchProjects, isLoading } = useProjectStore();
     const { documents, fetchDocuments, getDocumentById, createDocument, updateDocument, deleteDocument, loading } = useDocumentStore();
     
     const [activeDocId, setActiveDocId] = useState(null);
@@ -74,7 +74,25 @@ const ProjectDocuments = () => {
         }
     };
 
-    if (!project) return null;
+    if (isLoading && !project) {
+        return (
+            <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#0a0a0a]">
+                <div className="w-8 h-8 border-4 border-[#3b82f6] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest">Loading Documents...</p>
+            </div>
+        );
+    }
+
+    if (!project) {
+        return (
+            <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#0a0a0a]">
+                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest mb-4">Project not found</p>
+                <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold transition-colors">
+                    Back to Projects
+                </button>
+            </div>
+        );
+    }
 
     return (
         <ErrorBoundary>

@@ -13,14 +13,14 @@ const ProjectCard = ({ project, isDragging, onEdit, onDelete }) => {
             <div className={`absolute top-0 left-0 w-full h-1 border-t-2 ${isDragging ? 'opacity-100' : 'opacity-50'}`} style={{ borderColor: project.accentColor }}></div>
 
             <div className="relative z-10 flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-serif text-white shadow-lg border border-white/10 flex-shrink-0" style={{ backgroundColor: project.accentColor }}>
-                    {project.name.charAt(0).toUpperCase()}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-serif text-white shadow-lg border border-white/10 flex-shrink-0" style={{ backgroundColor: project?.accentColor || '#3b82f6' }}>
+                    {project?.name ? project.name.charAt(0).toUpperCase() : 'P'}
                 </div>
                 
                 {/* Status Read-only Badge & Actions */}
                 <div className="flex items-center space-x-2 ml-4">
                     <span className="bg-black/50 border border-white/10 text-neutral-400 text-[10px] font-bold font-mono uppercase tracking-widest rounded-full px-3 py-1.5 pointer-events-none whitespace-nowrap">
-                        {project.status.replace('_', ' ')}
+                        {(project?.status || 'ACTIVE').replace('_', ' ')}
                     </span>
                     {project.myRole === 'OWNER' && (
                         <>
@@ -45,10 +45,10 @@ const ProjectCard = ({ project, isDragging, onEdit, onDelete }) => {
 
             <h3 
                 onPointerDown={(e) => e.stopPropagation()} 
-                onClick={(e) => { e.stopPropagation(); navigate(`/project/${project._id}`); }} 
+                onClick={(e) => { e.stopPropagation(); navigate(`/project/${project?._id}`); }} 
                 className="relative z-10 font-serif text-xl text-white mb-2 line-clamp-1 hover:text-[#3b82f6] transition-colors cursor-pointer"
             >
-                {project.name}
+                {project?.name || 'Untitled Project'}
             </h3>
             
             <p 
@@ -92,10 +92,10 @@ const ProjectCard = ({ project, isDragging, onEdit, onDelete }) => {
             )}
             
             <div className="relative z-10 flex justify-between items-center text-[10px] font-bold font-mono text-neutral-500 uppercase tracking-widest pt-3 border-t border-white/5 pointer-events-none mt-auto">
-                <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                <span>{project?.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'Unknown Date'}</span>
                 <span className="flex items-center space-x-2">
                     <span className="w-1.5 h-1.5 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)] bg-green-500"></span>
-                    <span>{project.members?.length || 1} MBR</span>
+                    <span>{project?.members?.length || 1} MBR</span>
                 </span>
             </div>
         </div>

@@ -4,8 +4,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FolderKanban, LogOut, CheckSquare, Bell, Check, CheckCheck } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useNotificationStore from '../../store/notificationStore';
+import useProjectStore from '../../store/projectStore';
 import socket from '../../api/socket';
 import Background from './Background';
+import CommandPalette from './CommandPalette';
 
 const AppLayout = ({ children }) => {
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
@@ -13,24 +15,23 @@ const AppLayout = ({ children }) => {
     const notifRef = useRef(null);
     const { logout, user } = useAuthStore();
     const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, addNotification } = useNotificationStore();
+    const { fetchProjects } = useProjectStore();
     const navigate = useNavigate();
     const location = useLocation();
 
     // Fetch notifications on mount + connect to personal socket room
     useEffect(() => {
         if (user?._id) {
-            console.log('🔔 NOTIF DEBUG: AppLayout useEffect fired, user._id =', user._id);
             fetchNotifications();
+            fetchProjects();
 
             // Handler that fires AFTER the socket has actually connected to the server
             const onConnect = () => {
-                console.log('🔔 NOTIF DEBUG: Socket connected! Emitting join_user with', user._id);
                 socket.emit('join_user', user._id);
             };
 
             // If already connected (e.g. ProjectBoard connected it first), join immediately
             if (socket.connected) {
-                console.log('🔔 NOTIF DEBUG: Socket already connected, emitting join_user immediately');
                 socket.emit('join_user', user._id);
             }
 
@@ -42,13 +43,24 @@ const AppLayout = ({ children }) => {
 
             // Listen for real-time notifications using Zustand getState to avoid stale closures
             socket.on('new_notification', (notification) => {
-                console.log('🔔 NOTIF DEBUG: Received new_notification!', notification);
                 useNotificationStore.getState().addNotification(notification);
+            });
+
+            // Listen for global project updates (like status changes on the dashboard)
+            socket.on('project_updated', (updatedProject) => {
+                syncProject(updatedProject);
+            });
+
+            // Listen for global project deletions
+            socket.on('project_deleted', ({ projectId }) => {
+                removeProject(projectId);
             });
 
             return () => {
                 socket.off('connect', onConnect);
                 socket.off('new_notification');
+                socket.off('project_updated');
+                socket.off('project_deleted');
             };
         }
     }, [user?._id]);
@@ -90,9 +102,11 @@ const AppLayout = ({ children }) => {
                                 transition={{ duration: 0.3 }}
                                 className="w-[280px] px-6 h-full flex flex-col"
                             >
-                                <div className="text-white font-serif text-3xl tracking-widest mb-16 text-center shadow-[0_0_20px_rgba(255,255,255,0.1)]">WAYPOINT</div>
+                                <div className="text-white font-serif text-3xl tracking-widest mb-10 text-center shadow-[0_0_20px_rgba(255,255,255,0.1)]">WAYPOINT</div>
                                 
-                                <div className="space-y-4 flex-1">
+                                <CommandPalette />
+
+                                <div className="space-y-4 flex-1 mt-2">
                                     <button 
                                         onClick={() => navigate('/dashboard')}
                                         className={`w-full flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all ${location.pathname === '/dashboard' ? 'bg-[#3b82f6] text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}

@@ -48,14 +48,14 @@ const CommandPalette = () => {
 
     return (
         <>
-            {/* Persistent Floating Search Bar */}
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+            {/* Integrated Sidebar Search Button */}
+            <div className="w-full mb-6">
                 <button 
                     onClick={() => setIsOpen(true)}
-                    className="flex items-center space-x-3 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-full shadow-lg hover:bg-white/5 hover:border-white/20 transition-all group w-[300px]"
+                    className="w-full flex items-center space-x-3 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl shadow-lg hover:bg-white/5 hover:border-white/20 transition-all group"
                 >
                     <Search className="w-4 h-4 text-neutral-400 group-hover:text-white transition-colors" />
-                    <span className="flex-1 text-left text-xs font-mono text-neutral-400 group-hover:text-white transition-colors">Search anything...</span>
+                    <span className="flex-1 text-left text-xs font-mono text-neutral-400 group-hover:text-white transition-colors">Search...</span>
                     <kbd className="bg-white/10 px-2 py-0.5 rounded text-[10px] text-neutral-400 font-mono tracking-widest">⌘K</kbd>
                 </button>
             </div>

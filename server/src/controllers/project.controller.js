@@ -4,9 +4,19 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Project } from "../models/project.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { User } from "../models/user.model.js";
+import { Task } from "../models/tasks.model.js";
+import { TaskList } from "../models/tasklist.model.js";
+import { Document } from "../models/document.model.js";
+import { Flow } from "../models/flow.model.js";
+import { Notification } from "../models/notification.model.js";
+import { Activity } from "../models/activity.model.js";
+import { TaskComment } from "../models/comments.model.js";
+import { TaskFile } from "../models/files.model.js";
 import { z } from "zod";
 import crypto from 'crypto';
 import { getIO } from "../socket.js";
+import { redisClient } from "../utils/redis.js";
+import { emailQueue } from "../utils/queue.js";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -49,23 +59,37 @@ export const createProject = asyncHandler(async (req, res) => {
   project.members.push(projectOwner._id);
   await project.save();
 
+  // Invalidate Redis cache
+  await redisClient.del(`user:${req.user._id}:projects`);
+
   return res.status(201).json(new ApiResponse(201, project, "Project created successfully"));
 });
 
 
 export const getUserProjects = asyncHandler(async (req, res) => {
-  // 1. Find all memberships for the logged-in user
+  const cacheKey = `user:${req.user._id}:projects`;
+
+  // 1. Check if we have cached projects in Redis
+  const cachedProjects = await redisClient.get(cacheKey);
+  if (cachedProjects) {
+    return res.status(200).json(new ApiResponse(200, JSON.parse(cachedProjects), "Projects retrieved from cache"));
+  }
+
+  // 2. Find all memberships for the logged-in user
   const memberships = await ProjectMember.find({ userId: req.user._id })
     .populate({
       path: "projectId", // Pulls in the full project details
       select: "name description accentColor status members createdAt githubLink deployedLink",
     });
 
-  // 2. Format the response to be clean for the frontend
+  // 3. Format the response to be clean for the frontend
   const projects = memberships.map(membership => ({
     ...membership.projectId._doc, // Spread the project data
     myRole: membership.role // Tell the frontend what role the user has
   }));
+
+  // 4. Save to Redis cache for 60 seconds (TTL)
+  await redisClient.set(cacheKey, JSON.stringify(projects), "EX", 60);
 
   return res.status(200).json(new ApiResponse(200, projects, "Projects fetched successfully"));
 });
@@ -97,7 +121,19 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
   if (!updatedProject) {
     throw new ApiError(404, "Project not found");
   }
+
+  // Invalidate Redis cache
+  await redisClient.del(`user:${req.user._id}:projects`);
+
+  // Emit to all members of the project individually so their Dashboard updates instantly
+  const members = await ProjectMember.find({ projectId });
+  members.forEach((member) => {
+      getIO().to(`user_${member.userId.toString()}`).emit("project_updated", updatedProject);
+  });
+  
+  // Also emit to the project room for anyone currently inside the project board
   getIO().to(projectId).emit("project_updated", updatedProject);
+
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project status updated"));
 });
 
@@ -134,6 +170,15 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Project not found");
   }
 
+  // Invalidate Redis cache
+  await redisClient.del(`user:${req.user._id}:projects`);
+
+  // Emit to all members of the project individually so their Dashboard updates instantly
+  const members = await ProjectMember.find({ projectId });
+  members.forEach((member) => {
+      getIO().to(`user_${member.userId.toString()}`).emit("project_updated", updatedProject);
+  });
+
   getIO().to(projectId).emit("project_updated", updatedProject);
   return res.status(200).json(new ApiResponse(200, updatedProject, "Project updated successfully"));
 });
@@ -151,11 +196,36 @@ export const deleteProject = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied. Only the Project Owner can delete this project.");
   }
 
-  // Delete project and memberships
-  await Project.findByIdAndDelete(projectId);
-  await ProjectMember.deleteMany({ projectId });
+  // 1. Fetch members BEFORE deleting them so we know who to notify via WebSockets
+  const members = await ProjectMember.find({ projectId });
 
-  getIO().to(projectId).emit("project_updated", updatedProject);
+  // 2. Fetch tasks to delete task dependencies (comments, activities, files)
+  const tasks = await Task.find({ projectId });
+  const taskIds = tasks.map(t => t._id);
+
+  // 3. CASCADE DELETES: Clean up all orphaned data referencing this project
+  await Promise.all([
+      Project.findByIdAndDelete(projectId),
+      ProjectMember.deleteMany({ projectId }),
+      Task.deleteMany({ projectId }),
+      TaskList.deleteMany({ projectId }),
+      Document.deleteMany({ projectId }),
+      Flow.deleteMany({ projectId }),
+      Notification.deleteMany({ projectId }),
+      Activity.deleteMany({ taskId: { $in: taskIds } }),
+      TaskComment.deleteMany({ taskId: { $in: taskIds } }),
+      TaskFile.deleteMany({ taskId: { $in: taskIds } })
+  ]);
+
+  // 4. Invalidate Redis cache
+  await redisClient.del(`user:${req.user._id}:projects`);
+
+  // 5. Emit to all former members individually so their Dashboard updates instantly
+  members.forEach((member) => {
+      getIO().to(`user_${member.userId.toString()}`).emit("project_deleted", { projectId });
+  });
+
+  getIO().to(projectId).emit("project_deleted", { projectId });
   return res.status(200).json(new ApiResponse(200, null, "Project deleted successfully"));
 });
 
@@ -165,6 +235,7 @@ export const deleteProject = asyncHandler(async (req, res) => {
 
 export const generateInviteToken = asyncHandler(async (req, res) => {
   const { projectId } = req.params;
+  const email = req.body?.email;
 
   // Security: Only OWNER or ADMIN can generate invites
   const membership = await ProjectMember.findOne({ projectId, userId: req.user._id });
@@ -175,11 +246,20 @@ export const generateInviteToken = asyncHandler(async (req, res) => {
   const project = await Project.findById(projectId);
   if (!project) throw new ApiError(404, "Project not found");
 
-  // Generate a random token
-  const inviteToken = crypto.randomBytes(20).toString('hex');
+  // Reuse existing token if it has one, otherwise generate
+  const inviteToken = project.inviteToken || crypto.randomBytes(20).toString('hex');
   
   project.inviteToken = inviteToken;
   await project.save();
+
+  if (email) {
+      const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/join/${inviteToken}`;
+      await emailQueue.add('SEND_INVITE_EMAIL', {
+          email,
+          projectName: project.name,
+          inviteLink
+      });
+  }
 
   return res.status(200).json(new ApiResponse(200, { inviteToken }, "Invite token generated"));
 });

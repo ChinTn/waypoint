@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, ListTodo, Users, Network, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -8,13 +8,37 @@ import ProjectSettingsModal from '../components/project/ProjectSettingsModal';
 const ProjectOverview = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
-    const { projects, members } = useProjectStore();
+    const { projects, members, isLoading, fetchProjectMembers } = useProjectStore();
+    
+    useEffect(() => {
+        if (projectId) {
+            fetchProjectMembers(projectId);
+        }
+    }, [projectId, fetchProjectMembers]);
     
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const project = projects.find(p => p._id === projectId);
 
-    if (!project) return null;
+    if (isLoading && !project) {
+        return (
+            <div className="flex-1 h-full flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-[#3b82f6] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest">Loading Project...</p>
+            </div>
+        );
+    }
+
+    if (!project) {
+        return (
+            <div className="flex-1 h-full flex flex-col items-center justify-center">
+                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest mb-4">Project not found</p>
+                <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold transition-colors">
+                    Back to Projects
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full w-full overflow-y-auto custom-scrollbar p-8 lg:p-12 flex flex-col items-center">

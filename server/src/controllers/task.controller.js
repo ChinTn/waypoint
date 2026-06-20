@@ -5,6 +5,8 @@ import { Task } from "../models/tasks.model.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
 import { getIO } from "../socket.js";
+import { redisClient } from "../utils/redis.js";
+import { emailQueue } from "../utils/queue.js";
 import { createNotification } from "../utils/createNotification.js";
 
 const createTaskSchema = z.object({
@@ -46,6 +48,9 @@ export const createTask = asyncHandler(async (req, res) => {
   // REALTIME: Broadcast the newly created task to everyone in the project room
   getIO().to(projectId).emit("task_created", task);
 
+  // Invalidate Redis cache
+  await redisClient.del(`project:${projectId}:tasks`);
+
   return res.status(201).json(new ApiResponse(201, task, "Task created successfully"));
 });
 
@@ -62,8 +67,18 @@ export const getProjectTasks = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied. You are not in this project.");
   }
 
+  // 1. Check Redis Cache
+  const cacheKey = `project:${projectId}:tasks`;
+  const cachedTasks = await redisClient.get(cacheKey);
+  if (cachedTasks) {
+    return res.status(200).json(new ApiResponse(200, JSON.parse(cachedTasks), "Tasks fetched from cache"));
+  }
+
   // Fetch all tasks for this project (sorted by position for Kanban dragging later)
   const tasks = await Task.find({ projectId }).sort({ position: 1, createdAt: -1 });
+
+  // 2. Set Redis Cache for 30 seconds
+  await redisClient.set(cacheKey, JSON.stringify(tasks), "EX", 30);
 
   return res.status(200).json(new ApiResponse(200, tasks, "Tasks fetched successfully"));
 });
@@ -107,7 +122,12 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
 
   // Since updateTaskStatus only returns partial data, we might want to populate it fully. 
   // But for simple drag-and-drop, broadcasting the updated fields is usually enough!
-  getIO().to(updatedTask.projectId.toString()).emit("task_updated", updatedTask);
+  // Convert the Mongoose document to a plain JS object and inject the timestamp
+  const payload = { 
+    ...updatedTask.toObject(), 
+    sentAt: Date.now() 
+  };
+  getIO().to(updatedTask.projectId.toString()).emit("task_updated", payload);
 
   // NOTIFICATION: If the status changed, notify all assignees (except the person who made the change)
   if (status && updatedTask.assignedTo?.length > 0) {
@@ -125,6 +145,9 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
           }
       }
   }
+
+  // Invalidate Redis cache
+  await redisClient.del(`project:${task.projectId}:tasks`);
 
   return res.status(200).json(new ApiResponse(200, updatedTask, "Task updated"));
 });
@@ -174,7 +197,7 @@ export const assignTask = asyncHandler(async (req, res) => {
   getIO().to(task.projectId.toString()).emit("task_updated", task);
 
   // NOTIFICATION: Tell the assignee they've been assigned (but not if they assigned themselves)
-  const assigneeUser = await ProjectMember.findById(assigneeId).populate('userId', '_id fullName');
+  const assigneeUser = await ProjectMember.findById(assigneeId).populate('userId', '_id fullName email');
   if (assigneeUser && assigneeUser.userId._id.toString() !== req.user._id.toString()) {
       await createNotification({
           recipientId: assigneeUser.userId._id,
@@ -184,7 +207,20 @@ export const assignTask = asyncHandler(async (req, res) => {
           taskId: task._id,
           actorId: req.user._id,
       });
+
+      // EMAIL: Send assignment email
+      const project = await Project.findById(task.projectId);
+      await emailQueue.add('SEND_ASSIGNMENT_EMAIL', {
+          email: assigneeUser.userId.email,
+          fullName: assigneeUser.userId.fullName,
+          taskTitle: task.title,
+          projectName: project ? project.name : "Waypoint Project",
+          priority: task.priority
+      });
   }
+
+  // Invalidate Redis cache
+  await redisClient.del(`project:${task.projectId}:tasks`);
 
   return res.status(200).json(new ApiResponse(200, task, "Task assigned successfully"));
 });
@@ -219,7 +255,11 @@ export const unassignTask = asyncHandler(async (req, res) => {
   });
 
   getIO().to(task.projectId.toString()).emit("task_updated", task);
-  return res.status(200).json(new ApiResponse(200, task, "Assignment removed"));
+
+  // Invalidate Redis cache
+  await redisClient.del(`project:${task.projectId}:tasks`);
+
+  return res.status(200).json(new ApiResponse(200, task, "Task unassigned successfully"));
 });
 
 export const getMyTasks = asyncHandler(async (req, res) => {
