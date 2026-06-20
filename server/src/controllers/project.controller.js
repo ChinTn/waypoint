@@ -287,6 +287,9 @@ export const joinProjectWithToken = asyncHandler(async (req, res) => {
   project.members.push(newMember._id);
   await project.save();
 
+  // Invalidate cache so the invited user sees the new project on their dashboard instantly
+  await redisClient.del(`user:${req.user._id}:projects`);
+
   return res.status(200).json(new ApiResponse(200, project, "Successfully joined the project"));
 });
 
@@ -332,6 +335,9 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
   targetMembership.role = role;
   await targetMembership.save();
 
+  // Invalidate cache for the user whose role was changed
+  await redisClient.del(`user:${targetMembership.userId}:projects`);
+
   return res.status(200).json(new ApiResponse(200, targetMembership, "Role updated successfully"));
 });
 
@@ -358,6 +364,9 @@ export const removeMember = asyncHandler(async (req, res) => {
 
   await ProjectMember.findByIdAndDelete(memberId);
   await Project.findByIdAndUpdate(projectId, { $pull: { members: memberId } });
+
+  // Invalidate cache for the user who was removed so the project disappears from their dashboard
+  await redisClient.del(`user:${targetMembership.userId}:projects`);
 
   return res.status(200).json(new ApiResponse(200, null, "Member removed successfully"));
 });
