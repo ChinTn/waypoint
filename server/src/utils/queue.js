@@ -1,7 +1,5 @@
 import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
-import { Notification } from '../models/notification.model.js';
-import { getIO } from '../socket.js';
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 
@@ -13,63 +11,12 @@ const connection = new Redis(process.env.REDIS_URL, {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 1. Create the Queue
-export const notificationQueue = new Queue('notificationQueue', { connection });
-
-// 2. Create the Worker (Background Processor)
-export const notificationWorker = new Worker(
-  'notificationQueue',
-  async (job) => {
-    const data = job.data;
-    console.log(`[BullMQ] Processing notification job: ${job.id}`);
-
-    try {
-      // 1. Save to MongoDB
-      const notification = await Notification.create({
-        recipient: data.recipientId,
-        type: data.type,
-        message: data.message,
-        projectId: data.projectId,
-        taskId: data.taskId,
-        actor: data.actorId,
-      });
-
-      // 2. Populate the actor's name and avatar so the frontend can display them instantly
-      const populated = await Notification.findById(notification._id)
-          .populate("actor", "fullName avatar")
-          .populate("projectId", "name")
-          .lean();
-
-      // 3. Emit real-time socket event
-      const io = getIO();
-      if (io) {
-          const roomName = `user_${data.recipientId.toString()}`;
-          console.log(`[BullMQ] Emitting to room "${roomName}", type: ${data.type}`);
-          io.to(roomName).emit("new_notification", populated);
-      }
-
-      console.log(`[BullMQ] Notification created successfully for user ${data.recipientId}`);
-      return notification;
-    } catch (error) {
-      console.error(`[BullMQ] Error processing notification:`, error);
-      throw error; // Let BullMQ handle retries
-    }
-  },
-  { connection }
-);
-
-// Event listeners for monitoring
-notificationWorker.on('completed', (job) => {
-  console.log(`[BullMQ] Notification Job ${job.id} has completed!`);
-});
-
-notificationWorker.on('failed', (job, err) => {
-  console.log(`[BullMQ] Notification Job ${job.id} has failed with ${err.message}`);
-});
-
 // ==========================================
-// EMAIL QUEUE & WORKER
+// EMAIL QUEUE & WORKER (BullMQ is perfect for emails — they're slow and can retry)
 // ==========================================
+// NOTE: Notifications NO LONGER go through BullMQ. They are now saved + emitted
+// directly in createNotification.js (same pattern as task_updated) because
+// Upstash's serverless Redis drops the persistent connection BullMQ workers need.
 
 export const emailQueue = new Queue('emailQueue', { connection });
 
