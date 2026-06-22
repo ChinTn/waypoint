@@ -100,7 +100,7 @@ const ProjectBoard = () => {
         
         useTaskStore.setState((state) => ({
           tasks: state.tasks.map((task) =>
-            task._id === updatedTask._id ? { ...task, ...updatedTask } : task,
+            task._id === updatedTask._id ? updatedTask : task,
           ),
         }));
     };
