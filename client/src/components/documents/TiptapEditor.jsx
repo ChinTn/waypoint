@@ -140,6 +140,14 @@ const Editor = ({ ydoc, provider, initialContent, onUpdate, editable }) => {
             
             {/* Some CSS specifically for Tiptap's output so it matches the theme */}
             <style jsx global>{`
+                /* Make the editor take up the full page height and fix the invisible cursor */
+                .ProseMirror { 
+                    min-height: 60vh; 
+                    outline: none; 
+                    color: #d4d4d8; 
+                    caret-color: #ffffff; 
+                    padding-bottom: 50px;
+                }
                 .ProseMirror p { margin-bottom: 1em; line-height: 1.7; color: #d4d4d8; }
                 .ProseMirror h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: white; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
                 .ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; color: white; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
