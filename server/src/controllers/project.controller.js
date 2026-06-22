@@ -335,6 +335,14 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
   targetMembership.role = role;
   await targetMembership.save();
 
+  // Update the socket cache instantly if the user is currently connected!
+  const io = getIO();
+  const userSockets = await io.in(`user_${targetMembership.userId}`).fetchSockets();
+  userSockets.forEach(s => {
+      s.data.roles = s.data.roles || {};
+      s.data.roles[projectId] = role;
+  });
+
   // Invalidate cache for the user whose role was changed
   await redisClient.del(`user:${targetMembership.userId}:projects`);
 

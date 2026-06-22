@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/axios';
+import socket from '../api/socket';
 
 const useTaskStore = create((set) => ({
     tasks: [],
@@ -30,7 +31,6 @@ const useTaskStore = create((set) => ({
     createTask: async (taskData) => {
         try {
             const response = await api.post('/tasks', taskData);
-            // Append the newly created task instantly if the socket hasn't already added it
             set((state) => {
                 if (state.tasks.some(t => t._id === response.data.data._id)) return state;
                 return { tasks: [response.data.data, ...state.tasks] };
@@ -48,14 +48,11 @@ const useTaskStore = create((set) => ({
             )
         }));
 
-        try {
-            // Then we tell the backend to save the change silently in the background
-            await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-        } catch (error) {
-            const errDetails = error.response?.data ? JSON.stringify(error.response.data) : error.message;
-            alert(`Backend Failed to save task: ${errDetails}. DID YOU RESTART THE BACKEND SERVER?`);
-            console.error('Failed to update task status on server:', errDetails);
-        }
+        // PURE WEBSOCKET MIGRATION: Instant broadcast!
+        socket.emit("move_task", {
+            taskId,
+            updateFields: { status: newStatus }
+        });
     },
 
     // ADVANCED TASK MANAGEMENT (Phase 1)
@@ -138,11 +135,10 @@ const useTaskStore = create((set) => ({
             )
         }));
 
-        try {
-            await api.patch(`/tasks/${taskId}/status`, { priority: newPriority });
-        } catch (error) {
-            console.error('Failed to update task priority:', error);
-        }
+        socket.emit("move_task", {
+            taskId,
+            updateFields: { priority: newPriority }
+        });
     }
 }));
 
