@@ -9,7 +9,10 @@ if (!redisUrl) {
     throw new Error("REDIS_URL is not defined in the environment variables.");
 }
 
-export const redisClient = new Redis(redisUrl);
+export const redisClient = new Redis(redisUrl, {
+    maxRetriesPerRequest: 3,
+    enableOfflineQueue: false
+});
 
 redisClient.on('error', (err) => {
     console.error('Redis Client Error', err);
