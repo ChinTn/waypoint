@@ -4,10 +4,6 @@ import { app } from "../app.js";
 import { WebSocketServer } from 'ws'; 
 import yUtils from 'y-websocket/bin/utils'; 
 const { setupWSConnection } = yUtils; 
-import { ProjectMember } from "./models/projectMember.model.js";
-import { Task } from "./models/task.model.js";
-import { redisClient } from "./db/redis.js";
-import { createNotification } from "./utils/createNotification.js";
 
 // 1. We wrap your existing Express 'app' inside a core Node 'http' server.
 // WebSockets require lower-level server access than Express provides by default.
@@ -53,19 +49,12 @@ io.on("connection", (socket) => {
 
     // NEW: Listen for the frontend joining with their user data!
     socket.on("join_project", async ({ projectId, user }) => {
-        // Cache the user's role for this project
-        if (user && user._id) {
-            const member = await ProjectMember.findOne({ projectId, userId: user._id }).lean();
-            socket.data.roles = socket.data.roles || {};
-            socket.data.roles[projectId] = member ? member.role : null;
-        }
-
         socket.join(projectId);
         // Save the user data directly inside the socket connection so we know who this is
         socket.data.user = user;
         socket.data.projectId = projectId;
         
-        console.log(`👤 User ${user?.fullName} joined Project Room: ${projectId} with role: ${socket.data.roles[projectId]}`);
+        console.log(`👤 User ${user?.fullName} joined Project Room: ${projectId}`);
 
         // Fetch ALL current sockets inside this specific room
         const sockets = await io.in(projectId).fetchSockets();
@@ -78,59 +67,6 @@ io.on("connection", (socket) => {
 
         // Shout the updated list to EVERYONE in the room
         io.to(projectId).emit("online_users", uniqueUsers);
-    });
-
-    socket.on("move_task", async (data) => {
-        const { taskId, updateFields } = data;
-        const projectId = socket.data.projectId;
-        const role = socket.data.roles?.[projectId];
-
-        if (!role || !["MEMBER", "ADMIN", "OWNER"].includes(role)) {
-            return socket.emit("error", { message: "Not authorized to move tasks" });
-        }
-
-        // Fast Path Broadcast
-        socket.to(projectId).emit("task_updated", {
-            _id: taskId,
-            projectId: projectId,
-            ...updateFields,
-            sentAt: Date.now()
-        });
-
-        // Background Persist
-        try {
-            const updatedTask = await Task.findByIdAndUpdate(
-                taskId,
-                { $set: updateFields },
-                { new: true }
-            ).populate({
-                path: 'assignedTo',
-                populate: { path: 'userId', select: 'fullName avatar' }
-            });
-
-            if (updateFields.status && updatedTask.assignedTo?.length > 0) {
-                for (const member of updatedTask.assignedTo) {
-                    const userId = member?.userId?._id || member?.userId;
-                    if (userId && userId.toString() !== socket.data.user._id.toString()) {
-                        await createNotification({
-                            recipientId: userId,
-                            type: "TASK_STATUS_CHANGED",
-                            message: `${socket.data.user.fullName} moved "${updatedTask.title}" to ${updateFields.status}`,
-                            projectId: updatedTask.projectId,
-                            taskId: updatedTask._id,
-                            actorId: socket.data.user._id,
-                            actorFullName: socket.data.user.fullName,
-                            actorAvatar: socket.data.user.avatar
-                        });
-                    }
-                }
-            }
-
-            // Cache Invalidation
-            await redisClient.del(`project:${projectId}:tasks`);
-        } catch (error) {
-            console.error("Persist failed:", taskId, error);
-        }
     });
 
     // When the user navigates away from a project board (without disconnecting)
