@@ -91,14 +91,18 @@ const ProjectBoard = () => {
     };
 
     const handleTaskUpdated = (updatedTask) => {
-      if (updatedTask.sentAt) {
-        console.log(`⚡ WebSocket Latency: ${Date.now() - updatedTask.sentAt} ms`);
-      }
-      useTaskStore.setState((state) => ({
-        tasks: state.tasks.map((task) =>
-          task._id === updatedTask._id ? updatedTask : task,
-        ),
-      }));
+        const receivedAt = Date.now();
+        const networkLatency = receivedAt - updatedTask.sentAt;
+        console.log(`⚡ [Network] Socket Latency: ${networkLatency} ms`);
+        
+        // Attach the receivedAt timestamp so the render tracker can measure React's delay
+        updatedTask.receivedAt = receivedAt;
+        
+        useTaskStore.setState((state) => ({
+          tasks: state.tasks.map((task) =>
+            task._id === updatedTask._id ? updatedTask : task,
+          ),
+        }));
     };
 
     const handleProjectUpdated = (updatedProject) => {
@@ -123,6 +127,22 @@ const ProjectBoard = () => {
       socket.emit("leave_project", projectId);
     };
   }, [projectId]);
+
+  // TRACK RENDER LATENCY
+  // By using useLayoutEffect (or useEffect), this fires immediately after React finishes updating the DOM
+  React.useLayoutEffect(() => {
+      const recentlyUpdatedTask = tasks.find(t => t.receivedAt && !t.renderLogged);
+      if (recentlyUpdatedTask) {
+          const renderTime = Date.now() - recentlyUpdatedTask.receivedAt;
+          const totalEndToEnd = Date.now() - recentlyUpdatedTask.sentAt;
+          
+          console.log(`⏱️ [Render] React Render Latency: ${renderTime} ms`);
+          console.log(`🏆 [Total] End-to-End Latency: ${totalEndToEnd} ms`);
+          
+          // Mute this task so it doesn't log again on next render
+          recentlyUpdatedTask.renderLogged = true;
+      }
+  }, [tasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
