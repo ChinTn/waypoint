@@ -111,6 +111,17 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
   if (description !== undefined) updateFields.description = description;
   if (subtasks !== undefined) updateFields.subtasks = subtasks;
 
+  // 1. OPTIMISTIC SOCKET EMISSION
+  // Blast the partial updates to all clients instantly!
+  const payload = { 
+    _id: taskId,
+    projectId: task.projectId,
+    ...updateFields,
+    sentAt: Date.now() 
+  };
+  getIO().to(task.projectId.toString()).emit("task_updated", payload);
+
+  // 2. Perform the heavy DB update in the background
   const updatedTask = await Task.findByIdAndUpdate(
     taskId,
     { $set: updateFields },
@@ -120,16 +131,8 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
       populate: { path: 'userId', select: 'fullName avatar' }
   });
 
-  // Since updateTaskStatus only returns partial data, we might want to populate it fully. 
-  // But for simple drag-and-drop, broadcasting the updated fields is usually enough!
-  // Convert the Mongoose document to a plain JS object and inject the timestamp
-  const payload = { 
-    ...updatedTask.toObject(), 
-    sentAt: Date.now() 
-  };
-  getIO().to(updatedTask.projectId.toString()).emit("task_updated", payload);
-
   // NOTIFICATION: If the status changed, notify all assignees (except the person who made the change)
+  // We use the freshly populated updatedTask here for the assignment list
   if (status && updatedTask.assignedTo?.length > 0) {
       for (const member of updatedTask.assignedTo) {
           const userId = member?.userId?._id || member?.userId;
@@ -141,6 +144,8 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
                   projectId: updatedTask.projectId,
                   taskId: updatedTask._id,
                   actorId: req.user._id,
+                  actorFullName: req.user.fullName,
+                  actorAvatar: req.user.avatar
               });
           }
       }
@@ -206,6 +211,8 @@ export const assignTask = asyncHandler(async (req, res) => {
           projectId: task.projectId,
           taskId: task._id,
           actorId: req.user._id,
+          actorFullName: req.user.fullName,
+          actorAvatar: req.user.avatar
       });
 
       // EMAIL: Send assignment email
