@@ -19,7 +19,7 @@ const SortableTask = ({ task, myRole, updateTaskPriority, onOpenDetails }) => {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: 'none', // DISABLED to eliminate the artificial 250ms visual delay
     opacity: isDragging ? 0.2 : 1,
   };
 
@@ -33,7 +33,7 @@ const SortableTask = ({ task, myRole, updateTaskPriority, onOpenDetails }) => {
         if (e.target.closest('[data-no-click]')) return;
         onOpenDetails(task._id);
       }}
-      className={`bg-white/5 backdrop-blur-md border p-4 cursor-grab active:cursor-grabbing shadow-lg z-10 rounded-[1rem] transition-all duration-300 ${isDragging ? 'border-[#3b82f6] shadow-[0_0_30px_rgba(255,90,0,0.2)]' : 'border-white/10 hover:border-white/30 hover:bg-white/10 hover:-translate-y-1'}`}
+      className={`bg-white/5 backdrop-blur-md border p-4 cursor-grab active:cursor-grabbing shadow-lg z-10 rounded-[1rem] ${isDragging ? 'border-[#3b82f6] shadow-[0_0_30px_rgba(255,90,0,0.2)]' : 'border-white/10 hover:border-white/30 hover:bg-white/10 hover:-translate-y-1'}`}
     >
       <h4 className="text-sm font-semibold mb-3 text-white">{task.title}</h4>
       <div className="flex justify-between items-center mt-1 pt-3 border-t border-white/5">
