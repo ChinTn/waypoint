@@ -41,26 +41,33 @@ const AppLayout = ({ children }) => {
             // Connect the socket (no-op if already connected)
             socket.connect();
 
-            // Listen for real-time notifications using Zustand getState to avoid stale closures
-            socket.on('new_notification', (notification) => {
+            // Define named handlers to prevent stale closures and allow precise cleanup
+            const handleNewNotification = (notification) => {
                 useNotificationStore.getState().addNotification(notification);
-            });
+            };
 
-            // Listen for global project updates (like status changes on the dashboard)
-            socket.on('project_updated', (updatedProject) => {
+            const handleProjectUpdated = (updatedProject) => {
                 syncProject(updatedProject);
-            });
+            };
+
+            const handleProjectDeleted = ({ projectId }) => {
+                removeProject(projectId);
+            };
+
+            // Listen for real-time notifications
+            socket.on('new_notification', handleNewNotification);
+
+            // Listen for global project updates
+            socket.on('project_updated', handleProjectUpdated);
 
             // Listen for global project deletions
-            socket.on('project_deleted', ({ projectId }) => {
-                removeProject(projectId);
-            });
+            socket.on('project_deleted', handleProjectDeleted);
 
             return () => {
                 socket.off('connect', onConnect);
-                socket.off('new_notification');
-                socket.off('project_updated');
-                socket.off('project_deleted');
+                socket.off('new_notification', handleNewNotification);
+                socket.off('project_updated', handleProjectUpdated);
+                socket.off('project_deleted', handleProjectDeleted);
             };
         }
     }, [user?._id]);

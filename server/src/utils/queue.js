@@ -37,7 +37,8 @@ export const notificationWorker = new Worker(
       // 2. Populate the actor's name and avatar so the frontend can display them instantly
       const populated = await Notification.findById(notification._id)
           .populate("actor", "fullName avatar")
-          .populate("projectId", "name");
+          .populate("projectId", "name")
+          .lean();
 
       // 3. Emit real-time socket event
       const io = getIO();

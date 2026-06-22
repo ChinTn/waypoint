@@ -80,52 +80,46 @@ const ProjectBoard = () => {
       socket.emit("join_project", { projectId, user });
     }
 
-    socket.on("online_users", (users) => {
-      setOnlineUsers(users);
-    });
-
-    // 3. Listen when someone creates a task!
-    socket.on("task_created", (newTask) => {
+    // Define named handlers to allow precise cleanup
+    const handleOnlineUsers = (users) => setOnlineUsers(users);
+    
+    const handleTaskCreated = (newTask) => {
       useTaskStore.setState((state) => {
-        // Prevent duplicate tasks if WE were the ones who created it
         if (state.tasks.some((t) => t._id === newTask._id)) return state;
         return { tasks: [newTask, ...state.tasks] };
       });
-      //Here we are using setState and not the function taken from store to update.. due to stale closure
-    });
+    };
 
-    // 4. LISTEN: When someone else drags a task, changes subtasks, or assigns!
-    socket.on("task_updated", (updatedTask) => {
-      // ---- ADD THIS LINE ----
+    const handleTaskUpdated = (updatedTask) => {
       if (updatedTask.sentAt) {
-        console.log(
-          `⚡ WebSocket Latency: ${Date.now() - updatedTask.sentAt} ms`,
-        );
+        console.log(`⚡ WebSocket Latency: ${Date.now() - updatedTask.sentAt} ms`);
       }
-      // -----------------------
       useTaskStore.setState((state) => ({
         tasks: state.tasks.map((task) =>
           task._id === updatedTask._id ? updatedTask : task,
         ),
       }));
-    });
+    };
 
-    // 5. LISTEN: When someone changes the Project Name or Settings!
-    socket.on("project_updated", (updatedProject) => {
+    const handleProjectUpdated = (updatedProject) => {
       useProjectStore.setState((state) => ({
         projects: state.projects.map((p) =>
           p._id === updatedProject._id ? { ...p, ...updatedProject } : p,
         ),
       }));
-    });
+    };
+
+    socket.on("online_users", handleOnlineUsers);
+    socket.on("task_created", handleTaskCreated);
+    socket.on("task_updated", handleTaskUpdated);
+    socket.on("project_updated", handleProjectUpdated);
 
     // 6. CLEANUP: When we leave the page, stop listening to project-specific events
-    //    but do NOT disconnect the socket — AppLayout needs it alive for notifications!
     return () => {
-      socket.off("online_users");
-      socket.off("task_created");
-      socket.off("task_updated");
-      socket.off("project_updated");
+      socket.off("online_users", handleOnlineUsers);
+      socket.off("task_created", handleTaskCreated);
+      socket.off("task_updated", handleTaskUpdated);
+      socket.off("project_updated", handleProjectUpdated);
       socket.emit("leave_project", projectId);
     };
   }, [projectId]);
