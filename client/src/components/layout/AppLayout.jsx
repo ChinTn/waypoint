@@ -15,7 +15,7 @@ const AppLayout = ({ children }) => {
     const notifRef = useRef(null);
     const { logout, user } = useAuthStore();
     const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, addNotification } = useNotificationStore();
-    const { fetchProjects } = useProjectStore();
+    const { fetchProjects, syncProject, removeProject } = useProjectStore();
     const navigate = useNavigate();
     const location = useLocation();
 
