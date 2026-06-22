@@ -16,10 +16,39 @@ import { getIO } from "../socket.js";
  * @param {string} [params.taskId]     - The Task._id this notification is about
  * @param {string} [params.actorId]    - The User._id of the person who triggered this
  */
-export const createNotification = async ({ recipientId, type, message, projectId, taskId, actorId }) => {
+import mongoose from "mongoose";
+
+export const createNotification = async ({ recipientId, type, message, projectId, taskId, actorId, actorFullName, actorAvatar }) => {
     try {
-        // 1. Save to MongoDB directly (no BullMQ middleman)
-        const notification = await Notification.create({
+        // 1. Generate an ID synchronously
+        const newId = new mongoose.Types.ObjectId();
+
+        // 2. Build optimistic payload
+        const optimisticNotif = {
+            _id: newId,
+            recipient: recipientId,
+            type,
+            message,
+            projectId: { _id: projectId }, // Frontend usually just needs the ID or we can pass name if needed
+            actor: { _id: actorId, fullName: actorFullName, avatar: actorAvatar },
+            read: false,
+            taskId,
+            createdAt: new Date(),
+            sentAt: Date.now()
+        };
+
+        // 3. Emit real-time socket event IMMEDIATELY
+        const io = getIO();
+        if (io) {
+            const roomName = `user_${recipientId.toString()}`;
+            io.to(roomName).emit("new_notification", optimisticNotif);
+        }
+
+        console.log(`🔔 Optimistic Notification sent to user ${recipientId}`);
+
+        // 4. Save to MongoDB directly in the background
+        await Notification.create({
+            _id: newId,
             recipient: recipientId,
             type,
             message,
@@ -28,20 +57,6 @@ export const createNotification = async ({ recipientId, type, message, projectId
             actor: actorId,
         });
 
-        // 2. Populate actor + project so the frontend can display them instantly
-        const populated = await Notification.findById(notification._id)
-            .populate("actor", "fullName avatar")
-            .populate("projectId", "name")
-            .lean();
-
-        // 3. Emit real-time socket event DIRECTLY (same pattern as task_updated)
-        const io = getIO();
-        if (io) {
-            const roomName = `user_${recipientId.toString()}`;
-            io.to(roomName).emit("new_notification", { ...populated, sentAt: Date.now() });
-        }
-
-        console.log(`🔔 Notification sent to user ${recipientId}`);
     } catch (error) {
         // We never want notification failures to crash the main request
         console.error("Failed to create notification:", error.message);
