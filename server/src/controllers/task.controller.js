@@ -86,7 +86,11 @@ export const getProjectTasks = asyncHandler(async (req, res) => {
 // Used specifically for Drag and Drop (TASK-03)
 export const updateTaskStatus = asyncHandler(async (req, res) => {
   const { taskId } = req.params;
-  const { status, position, priority, title, description, subtasks } = req.body; 
+  const { status, position, priority, title, description, subtasks, clientSentAt } = req.body; 
+
+  if (clientSentAt) {
+    console.log(`① Server received HTTP request at + ${Date.now() - clientSentAt} ms`);
+  }
 
   const task = await Task.findById(taskId);
   if (!task) {
@@ -117,9 +121,14 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
     _id: taskId,
     projectId: task.projectId,
     ...updateFields,
+    clientSentAt, // Pass this back to the frontend for tracking!
     sentAt: Date.now() 
   };
   getIO().to(task.projectId.toString()).emit("task_updated", payload);
+
+  if (clientSentAt) {
+    console.log(`② Server broadcasted socket at + ${Date.now() - clientSentAt} ms`);
+  }
 
   // 2. Perform the heavy DB update in the background
   const updatedTask = await Task.findByIdAndUpdate(

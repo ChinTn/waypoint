@@ -95,6 +95,10 @@ const ProjectBoard = () => {
         const networkLatency = receivedAt - updatedTask.sentAt;
         console.log(`⚡ [Network] Socket Latency: ${networkLatency} ms`);
         
+        if (updatedTask.clientSentAt) {
+            console.log(`③ Client received broadcast at + ${Date.now() - updatedTask.clientSentAt} ms`);
+        }
+        
         // Attach the receivedAt timestamp so the render tracker can measure React's delay
         updatedTask.receivedAt = receivedAt;
         
@@ -103,6 +107,10 @@ const ProjectBoard = () => {
             task._id === updatedTask._id ? { ...task, ...updatedTask } : task,
           ),
         }));
+
+        if (updatedTask.clientSentAt) {
+            console.log(`④ State update call finished at + ${Date.now() - updatedTask.clientSentAt} ms`);
+        }
     };
 
     const handleProjectUpdated = (updatedProject) => {

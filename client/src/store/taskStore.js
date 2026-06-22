@@ -50,7 +50,8 @@ const useTaskStore = create((set) => ({
 
         try {
             // Then we tell the backend to save the change silently in the background
-            await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+            const clientSentAt = Date.now();
+            await api.patch(`/tasks/${taskId}/status`, { status: newStatus, clientSentAt });
         } catch (error) {
             const errDetails = error.response?.data ? JSON.stringify(error.response.data) : error.message;
             alert(`Backend Failed to save task: ${errDetails}. DID YOU RESTART THE BACKEND SERVER?`);
