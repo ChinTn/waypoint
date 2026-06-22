@@ -43,6 +43,9 @@ const AppLayout = ({ children }) => {
 
             // Define named handlers to prevent stale closures and allow precise cleanup
             const handleNewNotification = (notification) => {
+                if (notification.sentAt) {
+                    console.log(`🔔 Notification Latency: ${Date.now() - notification.sentAt} ms`);
+                }
                 useNotificationStore.getState().addNotification(notification);
             };
 

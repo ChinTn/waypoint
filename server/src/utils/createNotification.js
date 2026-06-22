@@ -38,7 +38,7 @@ export const createNotification = async ({ recipientId, type, message, projectId
         const io = getIO();
         if (io) {
             const roomName = `user_${recipientId.toString()}`;
-            io.to(roomName).emit("new_notification", populated);
+            io.to(roomName).emit("new_notification", { ...populated, sentAt: Date.now() });
         }
 
         console.log(`🔔 Notification sent to user ${recipientId}`);
