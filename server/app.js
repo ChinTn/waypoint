@@ -30,8 +30,8 @@ import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 // Import routes
 
 //Public routes
-app.get("/api/v1/health", (req, res) => {
-    res.status(200).json({ status: "Active", message: "Server is awake" });
+app.all("/api/v1/health", (req, res) => {
+    res.status(200).send("OK");
 });
 
 import userRouter from "./src/routes/user.routes.js";
