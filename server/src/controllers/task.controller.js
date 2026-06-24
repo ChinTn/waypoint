@@ -154,7 +154,7 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
         const updatedTask = await Task.findByIdAndUpdate(
             taskId,
             { $set: updateFields },
-            { new: true } // Avoid full document validation on legacy tasks
+            { returnDocument: 'after' } // Fix Mongoose deprecation warning
         ).populate({
             path: 'assignedTo',
             populate: { path: 'userId', select: 'fullName avatar' }
