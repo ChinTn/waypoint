@@ -139,15 +139,12 @@ const ProjectBoard = () => {
   }, [projectId]);
 
   // TRACK RENDER LATENCY
-  // By using useLayoutEffect (or useEffect), this fires immediately after React finishes updating the DOM
+  // By using useLayoutEffect, this fires immediately after React finishes updating the DOM
   React.useLayoutEffect(() => {
       const recentlyUpdatedTask = tasks.find(t => t.receivedAt && !t.renderLogged);
       if (recentlyUpdatedTask) {
           const renderTime = Date.now() - recentlyUpdatedTask.receivedAt;
-          const totalEndToEnd = Date.now() - recentlyUpdatedTask.sentAt;
-          
-          console.log(`⏱️ [Render] React Render Latency: ${renderTime} ms`);
-          console.log(`🏆 [Total] End-to-End Latency: ${totalEndToEnd} ms`);
+          console.log(`⏱️ [Render] React DOM Render Latency: ${renderTime} ms`);
           
           // Mute this task so it doesn't log again on next render
           recentlyUpdatedTask.renderLogged = true;
