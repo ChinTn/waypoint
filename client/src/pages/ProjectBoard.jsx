@@ -92,11 +92,11 @@ const ProjectBoard = () => {
 
     const handleTaskUpdated = (updatedTask) => {
         const receivedAt = Date.now();
-        const networkLatency = receivedAt - updatedTask.sentAt;
-        console.log(`⚡ [Network] Socket Latency: ${networkLatency} ms`);
         
+        // ROUND-TRIP LATENCY (Client clock → Server → Client clock = same clock, valid!)
         if (updatedTask.clientSentAt) {
-            console.log(`③ Client received broadcast at + ${Date.now() - updatedTask.clientSentAt} ms`);
+            const roundTrip = receivedAt - updatedTask.clientSentAt;
+            console.log(`⚡ [Latency] Full Round-Trip: ${roundTrip} ms`);
         }
         
         // Attach the receivedAt timestamp so the render tracker can measure React's delay
@@ -109,7 +109,9 @@ const ProjectBoard = () => {
         }));
 
         if (updatedTask.clientSentAt) {
-            console.log(`④ State update call finished at + ${Date.now() - updatedTask.clientSentAt} ms`);
+            const reactLatency = Date.now() - receivedAt;
+            console.log(`⚛️ [Latency] React State Update: ${reactLatency} ms`);
+            console.log(`🏆 [Latency] Total (Round-Trip + React): ${Date.now() - updatedTask.clientSentAt} ms`);
         }
     };
 

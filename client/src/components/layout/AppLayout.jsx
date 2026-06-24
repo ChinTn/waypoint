@@ -43,12 +43,6 @@ const AppLayout = ({ children }) => {
 
             // Define named handlers to prevent stale closures and allow precise cleanup
             const handleNewNotification = (notification) => {
-                const receivedAt = Date.now();
-                if (notification.sentAt) {
-                    const networkLatency = receivedAt - notification.sentAt;
-                    console.log(`🔔 [Network] Notification Socket Latency: ${networkLatency} ms`);
-                    notification.receivedAt = receivedAt;
-                }
                 useNotificationStore.getState().addNotification(notification);
             };
 
@@ -78,19 +72,7 @@ const AppLayout = ({ children }) => {
         }
     }, [user?._id]);
 
-    // TRACK RENDER LATENCY FOR NOTIFICATIONS
-    React.useLayoutEffect(() => {
-        const recentlyReceivedNotif = notifications.find(n => n.receivedAt && !n.renderLogged);
-        if (recentlyReceivedNotif) {
-            const renderTime = Date.now() - recentlyReceivedNotif.receivedAt;
-            const totalEndToEnd = Date.now() - recentlyReceivedNotif.sentAt;
-            
-            console.log(`⏱️ [Render] Notification React Latency: ${renderTime} ms`);
-            console.log(`🏆 [Total] Notification End-to-End Latency: ${totalEndToEnd} ms`);
-            
-            recentlyReceivedNotif.renderLogged = true;
-        }
-    }, [notifications]);
+
 
     // Close dropdown when clicking outside
     useEffect(() => {
