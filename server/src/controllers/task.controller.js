@@ -130,40 +130,47 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
     console.log(`② Server broadcasted socket at + ${Date.now() - clientSentAt} ms`);
   }
 
+  // RETURN TO FRONTEND IMMEDIATELY (0ms TTFB overhead)
+  // We don't wait for the heavy DB write, notifications, or Redis cache invalidation
+  res.status(200).json(new ApiResponse(200, { ...task._doc, ...updateFields }, "Task updated (background processing)"));
+
   // 2. Perform the heavy DB update in the background
-  const updatedTask = await Task.findByIdAndUpdate(
-    taskId,
-    { $set: updateFields },
-    { new: true } // Avoid full document validation on legacy tasks
-  ).populate({
-      path: 'assignedTo',
-      populate: { path: 'userId', select: 'fullName avatar' }
-  });
+  (async () => {
+    try {
+        const updatedTask = await Task.findByIdAndUpdate(
+            taskId,
+            { $set: updateFields },
+            { new: true } // Avoid full document validation on legacy tasks
+        ).populate({
+            path: 'assignedTo',
+            populate: { path: 'userId', select: 'fullName avatar' }
+        });
 
-  // NOTIFICATION: If the status changed, notify all assignees (except the person who made the change)
-  // We use the freshly populated updatedTask here for the assignment list
-  if (status && updatedTask.assignedTo?.length > 0) {
-      for (const member of updatedTask.assignedTo) {
-          const userId = member?.userId?._id || member?.userId;
-          if (userId && userId.toString() !== req.user._id.toString()) {
-              await createNotification({
-                  recipientId: userId,
-                  type: "TASK_STATUS_CHANGED",
-                  message: `${req.user.fullName} moved "${updatedTask.title}" to ${status}`,
-                  projectId: updatedTask.projectId,
-                  taskId: updatedTask._id,
-                  actorId: req.user._id,
-                  actorFullName: req.user.fullName,
-                  actorAvatar: req.user.avatar
-              });
-          }
-      }
-  }
+        // NOTIFICATION: If the status changed, notify all assignees (except the person who made the change)
+        if (status && updatedTask.assignedTo?.length > 0) {
+            for (const member of updatedTask.assignedTo) {
+                const userId = member?.userId?._id || member?.userId;
+                if (userId && userId.toString() !== req.user._id.toString()) {
+                    await createNotification({
+                        recipientId: userId,
+                        type: "TASK_STATUS_CHANGED",
+                        message: `${req.user.fullName} moved "${updatedTask.title}" to ${status}`,
+                        projectId: updatedTask.projectId,
+                        taskId: updatedTask._id,
+                        actorId: req.user._id,
+                        actorFullName: req.user.fullName,
+                        actorAvatar: req.user.avatar
+                    });
+                }
+            }
+        }
 
-  // Invalidate Redis cache
-  await redisClient.del(`project:${task.projectId}:tasks`);
-
-  return res.status(200).json(new ApiResponse(200, updatedTask, "Task updated"));
+        // Invalidate Redis cache
+        await redisClient.del(`project:${task.projectId}:tasks`);
+    } catch (err) {
+        console.error("Background task update failed:", err);
+    }
+  })();
 });
 
 export const assignTask = asyncHandler(async (req, res) => {
