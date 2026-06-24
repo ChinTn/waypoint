@@ -78,5 +78,5 @@ export const cronWorker = new Worker(
       console.log(`[BullMQ] ⏰ Daily deadline check completed! Queued ${emailCount} reminder emails.`);
     }
   },
-  { connection }
+  { connection, settings: { stalledInterval: 60000 }, drainDelay: 30 }
 );

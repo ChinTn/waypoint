@@ -45,7 +45,7 @@ const AuthPage = () => {
         >
           <div className="mb-10 text-center">
             <motion.div layoutId="logo-text">
-              <h1 className="font-serif text-4xl text-white mb-2 tracking-tight">ProjectFlow</h1>
+              <h1 className="font-serif text-4xl text-white mb-2 tracking-tight">Waypoint</h1>
             </motion.div>
             <motion.p layout="position" className="text-sm font-bold text-[#60a5fa] font-mono tracking-[0.2em] uppercase">
               {isLogin ? 'Welcome Back' : 'Join Workspace'}
