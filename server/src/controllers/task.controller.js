@@ -132,6 +132,7 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
     projectId: task.projectId,
     ...updateFields,
     clientSentAt, // Pass this back to the frontend for tracking!
+    updatedBy: req.user._id, // Add this so the frontend knows who triggered the update
     sentAt: Date.now() 
   };
   getIO().to(task.projectId.toString()).emit("task_updated", payload);

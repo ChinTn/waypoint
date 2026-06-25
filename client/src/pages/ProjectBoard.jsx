@@ -94,13 +94,19 @@ const ProjectBoard = () => {
         const receivedAt = Date.now();
         
         // ROUND-TRIP LATENCY (Client clock → Server → Client clock = same clock, valid!)
-        if (updatedTask.clientSentAt) {
+        // We ONLY log this if the current user is the one who dragged the card!
+        const isSender = updatedTask.updatedBy === user?._id;
+        
+        if (updatedTask.clientSentAt && isSender) {
             const roundTrip = receivedAt - updatedTask.clientSentAt;
             console.log(`⚡ [Latency] Full Round-Trip: ${roundTrip} ms`);
         }
         
         // Attach the receivedAt timestamp so the render tracker can measure React's delay
-        updatedTask.receivedAt = receivedAt;
+        // We only care about tracking render latency for the person who dragged it
+        if (isSender) {
+            updatedTask.receivedAt = receivedAt;
+        }
         
         useTaskStore.setState((state) => ({
           tasks: state.tasks.map((task) =>
@@ -108,7 +114,7 @@ const ProjectBoard = () => {
           ),
         }));
 
-        if (updatedTask.clientSentAt) {
+        if (updatedTask.clientSentAt && isSender) {
             const reactLatency = Date.now() - receivedAt;
             console.log(`⚛️ [Latency] React State Update: ${reactLatency} ms`);
             console.log(`🏆 [Latency] Total (Round-Trip + React): ${Date.now() - updatedTask.clientSentAt} ms`);
