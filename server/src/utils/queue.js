@@ -61,7 +61,7 @@ export const emailWorker = new Worker(
       throw error;
     }
   },
-  { connection, settings: { stalledInterval: 60000 }, drainDelay: 30 }
+  { connection, settings: { stalledInterval: 60000 }, drainDelay: 30000 }
 );
 
 emailWorker.on('completed', (job) => {
