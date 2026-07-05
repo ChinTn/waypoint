@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary-blue: #2563eb;
+  --color-primary-blue-hover: #1d4ed8;
+}
+
+body {
+  @apply bg-[#f4f7fa] dark:bg-neutral-900 text-neutral-900 dark:text-slate-100 transition-colors duration-200;
+}
+
 /* Completely hide scrollbars for seamless liquid glass look */
 ::-webkit-scrollbar {
   width: 0px;

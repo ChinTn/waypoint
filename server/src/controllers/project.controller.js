@@ -368,5 +368,8 @@ export const removeMember = asyncHandler(async (req, res) => {
   // Invalidate cache for the user who was removed so the project disappears from their dashboard
   await redisClient.del(`user:${targetMembership.userId}:projects`);
 
+  // Emit a socket event to the removed user so their UI responds instantly
+  getIO().to(`user_${targetMembership.userId.toString()}`).emit("project_deleted", { projectId });
+
   return res.status(200).json(new ApiResponse(200, null, "Member removed successfully"));
 });

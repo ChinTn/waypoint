@@ -52,6 +52,7 @@ const ProjectBoard = () => {
   const currentProject = projects.find((p) => p._id === projectId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [newTask, setNewTask] = useState({ title: "", priority: "MEDIUM" });
@@ -240,37 +241,54 @@ const ProjectBoard = () => {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    await createTask({
-      projectId,
-      title: newTask.title,
-      priority: newTask.priority,
-    });
-    setIsModalOpen(false);
-    setNewTask({ title: "", priority: "MEDIUM" });
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await createTask({
+        projectId,
+        title: newTask.title,
+        priority: newTask.priority,
+      });
+      setIsModalOpen(false);
+      setNewTask({ title: "", priority: "MEDIUM" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (!currentProject) {
+      return (
+          <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0a0a0a]">
+              <p className="text-neutral-400 font-sans text-sm uppercase tracking-widest mb-4">Project not found or you lost access</p>
+              <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-neutral-900 dark:text-white font-bold transition-colors border border-slate-200 dark:border-white/10">
+                  Back to Projects
+              </button>
+          </div>
+      );
+  }
 
   return (
     <main className="flex-1 overflow-auto pt-8 px-10 pb-10 flex flex-col relative custom-scrollbar w-full h-full">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
-        <div className="flex items-center space-x-4 mb-6 md:mb-0">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-12">
+        <div className="flex items-center space-x-4 mb-6 xl:mb-0 flex-1 min-w-0 mr-8">
           <button
             onClick={() => navigate(`/project/${projectId}`)}
-            className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-neutral-400 hover:text-white transition-colors border border-white/5"
+            className="p-3 bg-white hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 rounded-2xl text-slate-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/5 shrink-0"
             title="Back to Project Hub"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-4xl md:text-5xl font-serif text-white tracking-tight">
+          <div className="min-w-0">
+            <h1 className="text-4xl md:text-5xl font-serif text-neutral-900 dark:text-white tracking-tight truncate">
               {currentProject?.name || "Project"}
             </h1>
-            <p className="text-neutral-500 font-mono text-sm mt-2">
+            <p className="text-slate-500 dark:text-neutral-500 font-sans text-sm mt-2 truncate">
               {currentProject?.description || "Manage your tasks efficiently."}
             </p>
           </div>
         </div>
-        <div className="flex space-x-4 items-center">
+        <div className="flex space-x-4 items-center shrink-0">
           {/* ONLINE USERS AVATAR STACK */}
           {onlineUsers.length > 0 && (
             <div className="flex items-center mr-2 md:mr-6">
@@ -278,7 +296,7 @@ const ProjectBoard = () => {
                 {onlineUsers.slice(0, 5).map((u, i) => (
                   <div
                     key={u._id}
-                    className="w-10 h-10 rounded-full border-2 border-[#0a0a0a] overflow-hidden relative"
+                    className="w-10 h-10 rounded-full border-2 border-neutral-900 overflow-hidden relative"
                     title={u.fullName}
                     style={{ zIndex: 10 - i }}
                   >
@@ -290,16 +308,16 @@ const ProjectBoard = () => {
                       alt={u.fullName}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0a]"></div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-neutral-900"></div>
                   </div>
                 ))}
                 {onlineUsers.length > 5 && (
-                  <div className="w-10 h-10 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-xs font-bold text-white relative z-0">
+                  <div className="w-10 h-10 rounded-full border-2 border-neutral-900 bg-white/10 flex items-center justify-center text-xs font-bold text-white relative z-0">
                     +{onlineUsers.length - 5}
                   </div>
                 )}
               </div>
-              <span className="hidden md:flex ml-3 text-[10px] font-mono text-emerald-400 uppercase tracking-[0.2em] items-center">
+              <span className="hidden md:flex ml-3 text-[10px] font-sans text-emerald-400 uppercase tracking-[0.2em] items-center">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]"></span>
                 Live
               </span>
@@ -310,7 +328,7 @@ const ProjectBoard = () => {
             currentProject?.myRole === "ADMIN") && (
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="bg-white/5 hover:bg-white/10 text-white px-6 py-4 font-sans text-sm tracking-widest uppercase font-semibold transition-all duration-300 rounded-full border border-white/10 flex items-center"
+              className="bg-white hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white px-4 py-2 whitespace-nowrap font-sans text-xs tracking-widest uppercase font-semibold transition-all duration-300 rounded-full border border-slate-200 dark:border-white/10 flex items-center"
             >
               Settings
             </button>
@@ -319,9 +337,9 @@ const ProjectBoard = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsModalOpen(true)}
-            className="bg-white text-black px-6 md:px-8 py-4 font-sans text-sm tracking-widest uppercase font-semibold transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(255,255,255,0.2)] rounded-full flex items-center"
+            className="bg-blue-600 text-white dark:bg-white dark:text-black px-4 py-2 whitespace-nowrap font-sans text-xs tracking-widest uppercase font-semibold transition-all duration-300 shadow-md dark:shadow-[0_0_40px_rgba(255,255,255,0.1)] dark:hover:shadow-[0_0_60px_rgba(255,255,255,0.2)] hover:bg-blue-700 rounded-full flex items-center"
           >
-            <Plus size={18} className="mr-2" />
+            <Plus size={16} className="mr-1.5" />
             New Task
           </motion.button>
         </div>
@@ -378,13 +396,13 @@ const ProjectBoard = () => {
           {/* Floating Drag Overlay */}
           <DragOverlay>
             {activeTask ? (
-              <div className="bg-black/80 backdrop-blur-3xl border border-[#3b82f6] p-4 shadow-[0_0_50px_rgba(255,90,0,0.3)] opacity-95 cursor-grabbing rotate-3 rounded-[1rem]">
+              <div className="bg-neutral-950/80 backdrop-blur-3xl border border-[#3b82f6] p-4 shadow-[0_0_50px_rgba(255,90,0,0.3)] opacity-95 cursor-grabbing rotate-3 rounded-[1rem]">
                 <h4 className="text-sm font-semibold mb-3 text-white">
                   {activeTask.title}
                 </h4>
                 <div className="flex justify-between items-center mt-1 pt-3 border-t border-white/5">
                   <span
-                    className={`text-[10px] font-bold font-mono uppercase tracking-widest px-2.5 py-1 rounded-full border ${activeTask.priority === "URGENT" ? "border-red-500 text-red-100 bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.8)]" : activeTask.priority === "HIGH" ? "border-red-500/50 text-red-400 bg-red-500/10" : activeTask.priority === "MEDIUM" ? "border-yellow-500/50 text-yellow-400 bg-yellow-500/10" : "border-green-500/50 text-green-400 bg-green-500/10"}`}
+                    className={`text-[10px] font-bold font-sans uppercase tracking-widest px-2.5 py-1 rounded-full border ${activeTask.priority === "URGENT" ? "border-red-500 text-red-100 bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.8)]" : activeTask.priority === "HIGH" ? "border-red-500/50 text-red-400 bg-red-500/10" : activeTask.priority === "MEDIUM" ? "border-yellow-500/50 text-yellow-400 bg-yellow-500/10" : "border-green-500/50 text-green-400 bg-green-500/10"}`}
                   >
                     {activeTask.priority}
                   </span>
@@ -398,17 +416,17 @@ const ProjectBoard = () => {
       {/* Create Task Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 p-10 shadow-2xl rounded-[2.5rem]"
+              className="w-full max-w-md bg-white/95 dark:bg-neutral-900/90 backdrop-blur-3xl border border-slate-200 dark:border-white/10 p-10 shadow-2xl rounded-[2.5rem]"
             >
-              <h2 className="font-serif text-3xl mb-8 text-white">New Task</h2>
+              <h2 className="font-serif text-3xl mb-8 text-neutral-900 dark:text-white">New Task</h2>
               <form onSubmit={handleCreateTask} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold font-mono text-neutral-500 mb-2 uppercase tracking-[0.2em]">
+                  <label className="block text-sm font-bold font-sans text-slate-500 dark:text-neutral-500 mb-2 uppercase tracking-[0.2em]">
                     Task Title
                   </label>
                   <input
@@ -418,12 +436,12 @@ const ProjectBoard = () => {
                     onChange={(e) =>
                       setNewTask({ ...newTask, title: e.target.value })
                     }
-                    className="w-full bg-white/5 border border-white/10 px-6 py-4 rounded-full text-base text-white focus:outline-none focus:border-[#3b82f6] transition-colors"
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-6 py-4 rounded-full text-base text-neutral-900 dark:text-white placeholder-slate-400 dark:placeholder-neutral-500 focus:outline-none focus:border-blue-500 dark:focus:border-[#3b82f6] transition-colors"
                     placeholder="e.g. Design Login Page"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold font-mono text-neutral-500 mb-4 uppercase tracking-[0.2em]">
+                  <label className="block text-sm font-bold font-sans text-slate-500 dark:text-neutral-500 mb-4 uppercase tracking-[0.2em]">
                     Priority
                   </label>
                   <div className="flex space-x-3">
@@ -432,7 +450,7 @@ const ProjectBoard = () => {
                         key={p}
                         type="button"
                         onClick={() => setNewTask({ ...newTask, priority: p })}
-                        className={`flex-1 py-3 rounded-full font-mono text-[10px] sm:text-xs font-bold uppercase tracking-widest border transition-all duration-300 ${
+                        className={`flex-1 py-3 rounded-full font-sans text-[10px] sm:text-xs font-bold uppercase tracking-widest border transition-all duration-300 ${
                           newTask.priority === p
                             ? p === "URGENT"
                               ? "border-red-500 text-red-100 bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.8)]"
@@ -441,7 +459,7 @@ const ProjectBoard = () => {
                                 : p === "MEDIUM"
                                   ? "border-yellow-500 text-yellow-400 bg-yellow-500/10 shadow-[0_0_10px_rgba(234,179,8,0.3)]"
                                   : "border-green-500 text-green-400 bg-green-500/10 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
-                            : "border-white/5 text-neutral-500 bg-black/20 hover:border-white/20 hover:text-white"
+                            : "border-slate-200 dark:border-white/5 text-slate-500 dark:text-neutral-500 bg-slate-50 dark:bg-neutral-950/20 hover:border-slate-300 dark:hover:border-white/20 hover:text-neutral-900 dark:hover:text-white"
                         }`}
                       >
                         {p}
@@ -449,11 +467,11 @@ const ProjectBoard = () => {
                     ))}
                   </div>
                 </div>
-                <div className="flex justify-end space-x-4 pt-6 border-t border-white/5">
+                <div className="flex justify-end space-x-4 pt-6 border-t border-slate-200 dark:border-white/5">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-6 py-4 text-sm font-bold font-mono text-neutral-400 hover:text-white uppercase tracking-widest transition-colors"
+                    className="px-6 py-4 text-sm font-bold font-sans text-slate-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white uppercase tracking-widest transition-colors"
                   >
                     Cancel
                   </button>
@@ -461,9 +479,10 @@ const ProjectBoard = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-8 py-4 font-sans text-base tracking-widest uppercase font-semibold flex items-center transition-colors shadow-[0_0_20px_rgba(255,90,0,0.3)] rounded-full"
+                    disabled={isSubmitting}
+                    className="bg-[#3b82f6] hover:bg-[#2563eb] text-white px-8 py-4 font-sans text-base tracking-widest uppercase font-semibold flex items-center transition-colors shadow-[0_0_20px_rgba(255,90,0,0.3)] rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Create
+                    {isSubmitting ? "Creating..." : "Create"}
                   </motion.button>
                 </div>
               </form>

@@ -10,10 +10,13 @@ const useAuthStore = create(
     isLoading: false,
     error: null,
 
-    register: async (fullName, email, password) => {
+    register: async (formData) => {
         set({ isLoading: true, error: null });
         try {
-            await api.post('/users/register', { fullName, email, password });
+            // Note: axios automatically sets the multipart boundary when given FormData
+            await api.post('/users/register', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             // We do NOT set isAuthenticated to true here anymore
             set({ isLoading: false });
         } catch (error) {
@@ -46,7 +49,22 @@ const useAuthStore = create(
         } catch (error) {
             set({ error: 'Logout failed', isLoading: false });
         }
+    },
+
+    updateProfile: async (formData) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await api.put('/users/profile', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            set({ user: response.data.data, isLoading: false });
+        } catch (error) {
+            const errData = error.response?.data;
+            const errMsg = errData?.errors?.length > 0 ? errData.errors[0] : errData?.message;
+            set({ error: errMsg || 'Profile update failed', isLoading: false });
+            throw error;
         }
+    }
     }),
     {
         name: 'auth-storage',

@@ -180,7 +180,7 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
 
     if (loading) {
         return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-950/60 backdrop-blur-md">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3b82f6]"></div>
             </div>
         );
@@ -194,28 +194,28 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
     const availableMembersToAssign = safeMembers.filter(m => !assignedIds.includes(m._id));
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/60 backdrop-blur-md" onClick={onClose}>
             <motion.div 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-5xl h-[85vh] flex flex-col bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/10 shadow-2xl rounded-[2rem] overflow-hidden"
+                className="w-full max-w-5xl h-[85vh] flex flex-col bg-white/95 dark:bg-neutral-900/95 backdrop-blur-3xl border border-slate-200 dark:border-white/10 shadow-2xl rounded-[2rem] overflow-hidden"
             >
                 {/* Header */}
-                <header className="px-8 py-6 border-b border-white/5 flex justify-between items-start bg-white/[0.02]">
+                <header className="px-8 py-6 border-b border-slate-200 dark:border-white/5 flex justify-between items-start bg-slate-50 dark:bg-white/[0.02]">
                     <div className="flex-1 mr-8">
                         <div className="flex items-center space-x-3 mb-2">
-                            <span className={`text-[10px] font-bold font-mono uppercase tracking-widest px-2.5 py-1 rounded-full border ${task.priority === 'URGENT' ? 'border-red-500 text-red-100 bg-red-600' : task.priority === 'HIGH' ? 'border-red-500/50 text-red-400 bg-red-500/10' : task.priority === 'MEDIUM' ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10' : 'border-green-500/50 text-green-400 bg-green-500/10'}`}>
+                            <span className={`text-[10px] font-bold font-sans uppercase tracking-widest px-2.5 py-1 rounded-full border ${task.priority === 'URGENT' ? 'border-red-500 text-red-100 bg-red-600' : task.priority === 'HIGH' ? 'border-red-500/50 text-red-400 bg-red-500/10' : task.priority === 'MEDIUM' ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10' : 'border-green-500/50 text-green-400 bg-green-500/10'}`}>
                                 {task.priority}
                             </span>
-                            <span className="text-xs font-mono text-neutral-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                            <span className="text-xs font-sans text-neutral-500 bg-white/5 px-3 py-1 rounded-full border border-white/5">
                                 {task.status.replace('_', ' ')}
                             </span>
                         </div>
-                        <h2 className="text-3xl font-serif text-white mt-4">{task.title}</h2>
+                        <h2 className="text-3xl font-serif text-neutral-900 dark:text-white mt-4">{task.title}</h2>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-neutral-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full text-slate-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </header>
@@ -224,31 +224,31 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
                     
                     {/* LEFT COLUMN: Details & Files */}
-                    <div className="flex-1 md:w-2/3 overflow-y-auto custom-scrollbar p-8 border-r border-white/5">
+                    <div className="flex-1 md:w-2/3 overflow-y-auto custom-scrollbar p-8 border-r border-slate-200 dark:border-white/5 bg-white dark:bg-transparent">
                         <div className="mb-10">
-                            <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest mb-4">Description</h3>
+                            <h3 className="text-sm font-bold font-sans text-slate-500 dark:text-neutral-500 uppercase tracking-widest mb-4">Description</h3>
                             {isEditingDesc && myRole !== 'VIEWER' ? (
                                 <textarea
                                     autoFocus
                                     value={descText}
                                     onChange={(e) => setDescText(e.target.value)}
                                     onBlur={handleDescSave}
-                                    className="w-full h-32 bg-black/40 text-neutral-200 text-sm leading-relaxed p-6 rounded-2xl border border-[#3b82f6] focus:outline-none resize-none custom-scrollbar"
+                                    className="w-full h-32 bg-slate-50 dark:bg-neutral-950/40 text-slate-700 dark:text-neutral-200 text-sm leading-relaxed p-6 rounded-2xl border border-blue-500 dark:border-[#3b82f6] focus:outline-none resize-none custom-scrollbar"
                                     placeholder="Write a detailed description..."
                                 />
                             ) : (
                                 <div 
                                     onClick={() => myRole !== 'VIEWER' && setIsEditingDesc(true)}
-                                    className={`text-neutral-300 text-sm leading-relaxed bg-black/20 p-6 rounded-2xl border border-white/5 whitespace-pre-wrap ${myRole !== 'VIEWER' ? 'cursor-pointer hover:border-white/20' : ''}`}
+                                    className={`text-slate-700 dark:text-neutral-300 text-sm leading-relaxed bg-slate-50 dark:bg-neutral-950/20 p-6 rounded-2xl border border-slate-200 dark:border-white/5 whitespace-pre-wrap ${myRole !== 'VIEWER' ? 'cursor-pointer hover:border-slate-300 dark:hover:border-white/20' : ''}`}
                                 >
-                                    {task.description || <span className="text-neutral-500 italic">Click to add description...</span>}
+                                    {task.description || <span className="text-slate-400 dark:text-neutral-500 italic">Click to add description...</span>}
                                 </div>
                             )}
                         </div>
 
                         <div className="mb-10">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center">
+                                <h3 className="text-sm font-bold font-sans text-neutral-500 uppercase tracking-widest flex items-center">
                                     <ListTodo size={14} className="mr-2" /> Subtasks
                                 </h3>
                                 {/* Progress Bar */}
@@ -260,7 +260,7 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                                 style={{ width: `${Math.round((task.subtasks.filter(s => s.isCompleted).length / task.subtasks.length) * 100)}%` }}
                                             />
                                         </div>
-                                        <span className="text-xs font-mono text-neutral-400">
+                                        <span className="text-xs font-sans text-neutral-400">
                                             {Math.round((task.subtasks.filter(s => s.isCompleted).length / task.subtasks.length) * 100)}%
                                         </span>
                                     </div>
@@ -269,21 +269,21 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
 
                             <div className="space-y-2">
                                 {task.subtasks?.map((subtask, idx) => (
-                                    <div key={idx} className="flex items-center group bg-black/20 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                    <div key={idx} className="flex items-center group bg-slate-50 dark:bg-neutral-950/20 p-3 rounded-xl border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-colors">
                                         <button 
                                             onClick={() => handleToggleSubtask(idx)}
                                             disabled={myRole === 'VIEWER'}
-                                            className={`flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center mr-3 transition-colors ${subtask.isCompleted ? 'bg-[#3b82f6] border-[#3b82f6] text-white' : 'border-neutral-600 hover:border-[#3b82f6] text-transparent'}`}
+                                            className={`flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center mr-3 transition-colors ${subtask.isCompleted ? 'bg-[#3b82f6] border-[#3b82f6] text-white' : 'border-slate-300 dark:border-neutral-600 hover:border-[#3b82f6] text-transparent'}`}
                                         >
                                             <CheckCircle2 size={12} className={subtask.isCompleted ? 'opacity-100' : 'opacity-0'} />
                                         </button>
-                                        <span className={`flex-1 text-sm transition-colors ${subtask.isCompleted ? 'text-neutral-500 line-through' : 'text-neutral-200'}`}>
+                                        <span className={`flex-1 text-sm transition-colors ${subtask.isCompleted ? 'text-slate-400 dark:text-neutral-500 line-through' : 'text-slate-700 dark:text-neutral-200'}`}>
                                             {subtask.title}
                                         </span>
                                         {myRole !== 'VIEWER' && (
                                             <button 
                                                 onClick={() => handleDeleteSubtask(idx)}
-                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -292,19 +292,19 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                 ))}
 
                                 {myRole !== 'VIEWER' && (
-                                    <form onSubmit={handleAddSubtask} className="mt-4 flex items-center bg-white/5 p-1 pl-4 rounded-xl border border-white/10 focus-within:border-[#3b82f6] transition-colors">
-                                        <Plus size={16} className="text-neutral-500 mr-2" />
+                                    <form onSubmit={handleAddSubtask} className="mt-4 flex items-center bg-slate-50 dark:bg-white/5 p-1 pl-4 rounded-xl border border-slate-200 dark:border-white/10 focus-within:border-blue-500 dark:focus-within:border-[#3b82f6] transition-colors">
+                                        <Plus size={16} className="text-slate-400 dark:text-neutral-500 mr-2" />
                                         <input 
                                             type="text"
                                             value={newSubtask}
                                             onChange={(e) => setNewSubtask(e.target.value)}
                                             placeholder="Add a subtask..."
-                                            className="flex-1 bg-transparent text-sm text-white py-2 outline-none"
+                                            className="flex-1 bg-transparent text-sm text-slate-700 dark:text-white py-2 outline-none placeholder-slate-400 dark:placeholder-neutral-500"
                                         />
                                         <button 
                                             type="submit"
                                             disabled={!newSubtask.trim()}
-                                            className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-mono font-bold uppercase rounded-lg transition-colors"
+                                            className="px-4 py-2 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 disabled:opacity-50 text-slate-700 dark:text-white text-xs font-sans font-bold uppercase rounded-lg transition-colors"
                                         >
                                             Add
                                         </button>
@@ -315,11 +315,11 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
 
                         <div className="mb-10">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center">
+                                <h3 className="text-sm font-bold font-sans text-neutral-500 uppercase tracking-widest flex items-center">
                                     <Paperclip size={14} className="mr-2" /> Attachments
                                 </h3>
                                 {myRole !== 'VIEWER' && (
-                                    <label className="cursor-pointer text-xs font-bold font-mono text-[#3b82f6] hover:text-blue-400 uppercase tracking-widest bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20 transition-colors">
+                                    <label className="cursor-pointer text-xs font-bold font-sans text-[#3b82f6] hover:text-blue-400 uppercase tracking-widest bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20 transition-colors">
                                         {uploading ? "Uploading..." : "Upload File"}
                                         <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                                     </label>
@@ -328,19 +328,19 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {task.files?.map(file => (
-                                    <a key={file._id} href={file.fileUrl} target="_blank" rel="noreferrer" className="flex items-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors group">
-                                        <div className="w-10 h-10 bg-black/30 rounded-lg flex items-center justify-center mr-4 text-blue-400 group-hover:scale-110 transition-transform">
+                                    <a key={file._id} href={file.fileUrl} target="_blank" rel="noreferrer" className="flex items-center p-4 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl transition-colors group">
+                                        <div className="w-10 h-10 bg-slate-200 dark:bg-neutral-950/30 rounded-lg flex items-center justify-center mr-4 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
                                             <Paperclip size={18} />
                                         </div>
                                         <div className="overflow-hidden">
-                                            <p className="text-sm text-white truncate font-medium">{file.fileName}</p>
-                                            <p className="text-xs text-neutral-500 font-mono mt-1">{(file.fileSize / 1024).toFixed(1)} KB</p>
+                                            <p className="text-sm text-neutral-900 dark:text-white truncate font-medium">{file.fileName}</p>
+                                            <p className="text-xs text-slate-500 dark:text-neutral-500 font-sans mt-1">{(file.fileSize / 1024).toFixed(1)} KB</p>
                                         </div>
                                     </a>
                                 ))}
                                 {task.files?.length === 0 && (
-                                    <div className="col-span-full py-8 text-center border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
-                                        <p className="text-sm font-mono text-neutral-500">No attachments yet.</p>
+                                    <div className="col-span-full py-8 text-center border border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-white/[0.02]">
+                                        <p className="text-sm font-sans text-slate-400 dark:text-neutral-500">No attachments yet.</p>
                                     </div>
                                 )}
                             </div>
@@ -348,10 +348,10 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                     </div>
 
                     {/* RIGHT COLUMN: Assignees & Comments */}
-                    <div className="w-full md:w-1/3 flex flex-col bg-black/20">
+                    <div className="w-full md:w-1/3 flex flex-col bg-slate-50 dark:bg-neutral-950/20">
                         {/* Assignees Section */}
-                        <div className="p-6 border-b border-white/5">
-                            <h3 className="text-sm font-bold font-mono text-neutral-500 uppercase tracking-widest flex items-center mb-4">
+                        <div className="p-6 border-b border-slate-200 dark:border-white/5">
+                            <h3 className="text-sm font-bold font-sans text-neutral-500 uppercase tracking-widest flex items-center mb-4">
                                 <UserPlus size={14} className="mr-2" /> Assignees
                             </h3>
                             <div className="space-y-3 mb-4">
@@ -360,15 +360,15 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                     const isMe = assignee.userId._id === user?._id;
                                     const canUnassign = myRole === 'OWNER' || myRole === 'ADMIN' || isMe;
                                     return (
-                                    <div key={assignee._id} className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
+                                    <div key={assignee._id} className="flex items-center justify-between bg-white dark:bg-white/5 p-3 rounded-xl border border-slate-200 dark:border-white/5">
                                         <div className="flex items-center">
-                                            <img src={assignee.userId.avatar || `https://ui-avatars.com/api/?name=${assignee.userId.fullName}`} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-white/10" />
-                                            <span className="text-sm text-white font-medium">{assignee.userId.fullName}</span>
+                                            <img src={assignee.userId.avatar || `https://ui-avatars.com/api/?name=${assignee.userId.fullName}`} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-slate-200 dark:border-white/10" />
+                                            <span className="text-sm text-neutral-900 dark:text-white font-medium">{assignee.userId.fullName}</span>
                                         </div>
                                         {canUnassign && myRole !== 'VIEWER' && (
                                             <button 
                                                 onClick={() => handleUnassign(assignee._id)}
-                                                className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                className="p-1.5 text-slate-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                                             >
                                                 <X size={14} />
                                             </button>
@@ -376,7 +376,7 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                     </div>
                                 )})}
                                 {task.assignedTo?.length === 0 && (
-                                    <p className="text-xs font-mono text-neutral-500">Unassigned</p>
+                                    <p className="text-xs font-sans text-neutral-500">Unassigned</p>
                                 )}
                             </div>
 
@@ -385,9 +385,9 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                                 <select 
                                     onChange={handleAssign}
                                     value=""
-                                    className="w-full bg-black/40 border border-white/10 text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-[#3b82f6] appearance-none"
+                                    className="w-full bg-white dark:bg-neutral-950/40 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-blue-500 dark:focus:border-[#3b82f6] appearance-none"
                                 >
-                                    <option value="" disabled>+ Assign Member</option>
+                                    <option value="" disabled className="text-slate-500 dark:text-neutral-400">+ Assign Member</option>
                                     {availableMembersToAssign.map(member => {
                                         // RBAC check for rendering options
                                         const isMe = member.userId._id === user?._id;
@@ -403,26 +403,26 @@ const TaskDetailsModal = ({ taskId, onClose }) => {
                         </div>
 
                         {/* Discussion Button */}
-                        <div className="p-6 border-b border-white/5 bg-black/10">
+                        <div className="p-6 border-b border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-neutral-950/10 flex-1">
                             <button 
                                 onClick={() => setIsDiscussionOpen(true)}
-                                className="w-full flex items-center justify-between p-5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group"
+                                className="w-full flex items-center justify-between p-5 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-2xl transition-all group shadow-sm dark:shadow-none"
                             >
                                 <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 rounded-xl bg-[#3b82f6]/20 flex items-center justify-center border border-[#3b82f6]/30 group-hover:bg-[#3b82f6]/30 transition-colors">
-                                        <MessageSquare size={20} className="text-[#3b82f6]" />
+                                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-[#3b82f6]/20 flex items-center justify-center border border-blue-100 dark:border-[#3b82f6]/30 group-hover:bg-blue-100 dark:group-hover:bg-[#3b82f6]/30 transition-colors">
+                                        <MessageSquare size={20} className="text-blue-600 dark:text-[#3b82f6]" />
                                     </div>
                                     <div className="text-left">
-                                        <h3 className="text-sm font-bold text-white mb-0.5">Task Discussion</h3>
-                                        <p className="text-xs font-mono text-neutral-400">{task.comments?.length || 0} comments</p>
+                                        <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-0.5">Task Discussion</h3>
+                                        <p className="text-xs font-sans text-slate-500 dark:text-neutral-400">{task.comments?.length || 0} comments</p>
                                     </div>
                                 </div>
                                 <div className="flex -space-x-2">
                                     {task.comments?.slice(0, 3).map(c => (
-                                        <img key={c._id} src={c.authorId?.userId?.avatar || `https://ui-avatars.com/api/?name=${c.authorId?.userId?.fullName || 'User'}`} alt="" className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] object-cover" />
+                                        <img key={c._id} src={c.authorId?.userId?.avatar || `https://ui-avatars.com/api/?name=${c.authorId?.userId?.fullName || 'User'}`} alt="" className="w-8 h-8 rounded-full border-2 border-white dark:border-neutral-900 object-cover" />
                                     ))}
                                     {task.comments?.length > 3 && (
-                                        <div className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/10 flex items-center justify-center text-[9px] font-bold text-white z-0 relative">
+                                        <div className="w-8 h-8 rounded-full border-2 border-white dark:border-neutral-900 bg-slate-200 dark:bg-white/10 flex items-center justify-center text-[9px] font-bold text-slate-700 dark:text-white z-0 relative">
                                             +{task.comments.length - 3}
                                         </div>
                                     )}

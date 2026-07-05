@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { redisClient } from "../utils/redis.js";
+import { uploadToS3 } from "../utils/s3.js";
 // --- ZOD SCHEMAS (PRD: AUTH-01) ---
 const registerSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -54,11 +55,20 @@ export const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User with this email already exists");
   }
 
+  let avatarUrl = "";
+  if (req.file) {
+    const uploadResult = await uploadToS3(req.file.path, req.file.originalname, req.file.mimetype);
+    if (uploadResult) {
+      avatarUrl = uploadResult.secure_url;
+    }
+  }
+
   // 3. Create User (password gets hashed automatically by our hook!)
   const user = await User.create({
     fullName,
     email,
     password,
+    avatar: avatarUrl,
   });
 
   // Remove password and refreshToken from the response
@@ -69,6 +79,35 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"));
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const { fullName } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (fullName) {
+    user.fullName = fullName;
+  }
+
+  if (req.file) {
+    const uploadResult = await uploadToS3(req.file.path, req.file.originalname, req.file.mimetype);
+    if (uploadResult) {
+      user.avatar = uploadResult.secure_url;
+    }
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  const updatedUser = await User.findById(user._id).select("-password -refreshToken");
+
+  // Update cache
+  await redisClient.set(`user:${user._id}:profile`, JSON.stringify(updatedUser), "EX", 24 * 60 * 60);
+
+  return res.status(200).json(new ApiResponse(200, updatedUser, "Profile updated successfully"));
 });
 
 

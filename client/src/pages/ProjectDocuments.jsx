@@ -76,18 +76,18 @@ const ProjectDocuments = () => {
 
     if (isLoading && !project) {
         return (
-            <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#0a0a0a]">
-                <div className="w-8 h-8 border-4 border-[#3b82f6] border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest">Loading Documents...</p>
+            <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-neutral-900">
+                <div className="w-8 h-8 border-4 border-blue-500 dark:border-[#3b82f6] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 dark:text-neutral-400 font-sans text-sm uppercase tracking-widest">Loading Documents...</p>
             </div>
         );
     }
 
     if (!project) {
         return (
-            <div className="flex-1 h-full flex flex-col items-center justify-center bg-[#0a0a0a]">
-                <p className="text-neutral-400 font-mono text-sm uppercase tracking-widest mb-4">Project not found</p>
-                <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold transition-colors">
+            <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-neutral-900">
+                <p className="text-slate-500 dark:text-neutral-400 font-sans text-sm uppercase tracking-widest mb-4">Project not found or you lost access</p>
+                <button onClick={() => navigate('/projects')} className="px-4 py-2 bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 rounded-lg text-neutral-900 dark:text-white font-bold transition-colors">
                     Back to Projects
                 </button>
             </div>
@@ -96,15 +96,15 @@ const ProjectDocuments = () => {
 
     return (
         <ErrorBoundary>
-        <main className="flex h-full w-full bg-[#0a0a0a] overflow-hidden">
+        <main className="flex h-full w-full bg-slate-50 dark:bg-neutral-900 overflow-hidden">
             {/* LEFT SIDEBAR: Document List */}
-            <div className="w-64 md:w-80 border-r border-white/5 bg-black/20 flex flex-col">
-                <div className="p-6 border-b border-white/5 flex items-center space-x-3">
-                    <button onClick={() => navigate(`/project/${projectId}`)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-neutral-400 hover:text-white transition-colors" title="Back to Hub">
+            <div className="w-64 md:w-80 border-r border-slate-200 dark:border-white/5 bg-slate-100/50 dark:bg-neutral-950/20 flex flex-col">
+                <div className="p-6 border-b border-slate-200 dark:border-white/5 flex items-center space-x-3">
+                    <button onClick={() => navigate(`/project/${projectId}`)} className="p-2 bg-white dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-transparent" title="Back to Hub">
                         <ArrowLeft size={16} />
                     </button>
                     <div>
-                        <h2 className="text-sm font-bold font-mono uppercase tracking-widest text-neutral-500">Docs</h2>
+                        <h2 className="text-sm font-bold font-sans uppercase tracking-widest text-slate-500 dark:text-neutral-500">Docs</h2>
                     </div>
                 </div>
 
@@ -120,7 +120,7 @@ const ProjectDocuments = () => {
                     )}
 
                     {loading && documents.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-neutral-500 font-mono animate-pulse">Loading docs...</div>
+                        <div className="p-4 text-center text-xs text-neutral-500 font-sans animate-pulse">Loading docs...</div>
                     ) : documents.map(doc => {
                         const isSelected = activeDocId === doc._id;
                         // Determine if user can delete (Admin, Owner, or Creator)
@@ -131,11 +131,11 @@ const ProjectDocuments = () => {
                                 key={doc._id}
                                 onClick={() => setActiveDocId(doc._id)}
                                 className={`w-full flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all group ${
-                                    isSelected ? 'bg-[#3b82f6]/10 text-white border border-[#3b82f6]/20' : 'text-neutral-400 hover:bg-white/5 border border-transparent'
+                                    isSelected ? 'bg-blue-100 dark:bg-[#3b82f6]/10 text-blue-700 dark:text-white border border-blue-200 dark:border-[#3b82f6]/20' : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-200 dark:hover:bg-white/5 border border-transparent'
                                 }`}
                             >
                                 <div className="flex items-center truncate pr-2">
-                                    <FileText size={16} className={`mr-3 flex-shrink-0 ${isSelected ? 'text-[#3b82f6]' : 'text-neutral-500'}`} />
+                                    <FileText size={16} className={`mr-3 flex-shrink-0 ${isSelected ? 'text-blue-600 dark:text-[#3b82f6]' : 'text-slate-400 dark:text-neutral-500'}`} />
                                     <span className="text-sm truncate font-medium">{doc.title}</span>
                                 </div>
                                 {canDelete && myRole !== 'VIEWER' && (
@@ -153,7 +153,7 @@ const ProjectDocuments = () => {
             </div>
 
             {/* RIGHT MAIN AREA: Editor */}
-            <div className="flex-1 flex flex-col bg-black/40 relative">
+            <div className="flex-1 flex flex-col bg-white/50 dark:bg-neutral-950/40 relative">
                 {activeDoc ? (
                     <motion.div 
                         key={activeDoc._id} // Re-mounts animation when changing docs
@@ -169,9 +169,9 @@ const ProjectDocuments = () => {
                                 onChange={handleTitleUpdate}
                                 disabled={myRole === 'VIEWER'}
                                 placeholder="Document Title"
-                                className="w-full bg-transparent text-3xl md:text-5xl font-serif text-white font-bold outline-none placeholder-neutral-700"
+                                className="w-full bg-transparent text-3xl md:text-5xl font-serif text-neutral-900 dark:text-white font-bold outline-none placeholder-slate-400 dark:placeholder-neutral-700"
                             />
-                            <div className="flex items-center space-x-2 mt-4 text-xs font-mono text-neutral-500">
+                            <div className="flex items-center space-x-2 mt-4 text-xs font-sans text-slate-500 dark:text-neutral-500">
                                 <img src={activeDoc.createdBy?.avatar || `https://ui-avatars.com/api/?name=${activeDoc.createdBy?.fullName || 'User'}`} className="w-5 h-5 rounded-full" alt="" />
                                 <span>Created by {activeDoc.createdBy?.fullName}</span>
                                 <span>•</span>
@@ -191,11 +191,11 @@ const ProjectDocuments = () => {
                     </motion.div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                        <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-6">
-                            <FileText size={32} className="text-neutral-600" />
+                        <div className="w-20 h-20 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full flex items-center justify-center mb-6">
+                            <FileText size={32} className="text-slate-400 dark:text-neutral-600" />
                         </div>
-                        <h2 className="text-xl font-serif text-white mb-2">No Document Selected</h2>
-                        <p className="text-sm text-neutral-500 max-w-sm">
+                        <h2 className="text-xl font-serif text-neutral-900 dark:text-white mb-2">No Document Selected</h2>
+                        <p className="text-sm text-slate-500 dark:text-neutral-500 max-w-sm">
                             {myRole !== 'VIEWER' 
                                 ? "Create a new document from the sidebar to start writing PRDs, notes, and specs."
                                 : "Select a document from the sidebar to read."

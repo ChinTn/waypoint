@@ -128,7 +128,7 @@ const Editor = ({ ydoc, provider, initialContent, onUpdate, editable }) => {
     }, [initialContent, editor]);
 
     if (!editor) {
-        return <div className="p-8 text-neutral-500 font-mono text-sm animate-pulse">Initializing editor...</div>;
+        return <div className="p-8 text-neutral-500 font-sans text-sm animate-pulse">Initializing editor...</div>;
     }
 
     return (
@@ -140,23 +140,35 @@ const Editor = ({ ydoc, provider, initialContent, onUpdate, editable }) => {
             
             {/* Some CSS specifically for Tiptap's output so it matches the theme */}
             <style jsx global>{`
-                /* Make the editor take up the full page height and fix the invisible cursor */
+                /* Base styles (Light Mode) */
                 .ProseMirror { 
                     min-height: 60vh; 
                     outline: none; 
-                    color: #d4d4d8; 
-                    caret-color: #ffffff; 
+                    color: #334155; 
+                    caret-color: #000000; 
                     padding-bottom: 50px;
                 }
-                .ProseMirror p { margin-bottom: 1em; line-height: 1.7; color: #d4d4d8; }
-                .ProseMirror h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: white; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
-                .ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; color: white; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
-                .ProseMirror ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: #d4d4d8; }
-                .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; color: #d4d4d8; }
-                .ProseMirror blockquote { border-left: 3px solid #3b82f6; padding-left: 1em; color: #a1a1aa; font-style: italic; }
-                .ProseMirror pre { background-color: #0a0a0a; padding: 1em; border-radius: 0.5em; font-family: monospace; border: 1px solid rgba(255,255,255,0.1); overflow-x: auto; }
-                .ProseMirror code { font-family: monospace; background-color: rgba(255,255,255,0.1); padding: 0.2em 0.4em; border-radius: 0.3em; font-size: 0.9em; }
-                .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #52525b; pointer-events: none; height: 0; }
+                .ProseMirror p { margin-bottom: 1em; line-height: 1.7; color: #334155; }
+                .ProseMirror h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; color: #171717; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
+                .ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; color: #171717; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
+                .ProseMirror ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: #334155; }
+                .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; color: #334155; }
+                .ProseMirror blockquote { border-left: 3px solid #3b82f6; padding-left: 1em; color: #64748b; font-style: italic; }
+                .ProseMirror pre { background-color: #f1f5f9; padding: 1em; border-radius: 0.5em; font-family: monospace; border: 1px solid rgba(0,0,0,0.1); overflow-x: auto; }
+                .ProseMirror code { font-family: monospace; background-color: rgba(0,0,0,0.05); padding: 0.2em 0.4em; border-radius: 0.3em; font-size: 0.9em; }
+                .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #94a3b8; pointer-events: none; height: 0; }
+
+                /* Dark Mode */
+                .dark .ProseMirror { color: #d4d4d8; caret-color: #ffffff; }
+                .dark .ProseMirror p { color: #d4d4d8; }
+                .dark .ProseMirror h1 { color: white; }
+                .dark .ProseMirror h2 { color: white; }
+                .dark .ProseMirror ul { color: #d4d4d8; }
+                .dark .ProseMirror ol { color: #d4d4d8; }
+                .dark .ProseMirror blockquote { color: #a1a1aa; }
+                .dark .ProseMirror pre { background-color: #171717; border: 1px solid rgba(255,255,255,0.1); }
+                .dark .ProseMirror code { background-color: rgba(255,255,255,0.1); }
+                .dark .ProseMirror p.is-editor-empty:first-child::before { color: #52525b; }
             `}</style>
         </div>
     );
@@ -186,7 +198,7 @@ const TiptapEditor = ({ documentId, initialContent, onUpdate, editable = true })
     }, [documentId, ydoc]);
 
     if (!provider) {
-        return <div className="p-8 text-neutral-500 font-mono text-sm animate-pulse">Connecting to collaborative session...</div>;
+        return <div className="p-8 text-neutral-500 font-sans text-sm animate-pulse">Connecting to collaborative session...</div>;
     }
 
     return (

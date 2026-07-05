@@ -28,14 +28,14 @@ const JoinProject = () => {
     }, [token, joinProject, navigate]);
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white/5 border border-white/10 p-10 rounded-[2rem] text-center shadow-2xl backdrop-blur-md">
                 
                 {status === 'joining' && (
                     <>
                         <div className="w-16 h-16 border-4 border-[#3b82f6] border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
                         <h2 className="text-2xl font-serif text-white mb-2">Joining Project...</h2>
-                        <p className="text-neutral-500 font-mono text-sm">Please wait while we verify your invite link.</p>
+                        <p className="text-neutral-500 font-sans text-sm">Please wait while we verify your invite link.</p>
                     </>
                 )}
 
@@ -47,7 +47,7 @@ const JoinProject = () => {
                             </svg>
                         </div>
                         <h2 className="text-2xl font-serif text-white mb-2">Welcome Aboard!</h2>
-                        <p className="text-neutral-500 font-mono text-sm">Successfully joined the project. Redirecting...</p>
+                        <p className="text-neutral-500 font-sans text-sm">Successfully joined the project. Redirecting...</p>
                     </>
                 )}
 
@@ -59,10 +59,10 @@ const JoinProject = () => {
                             </svg>
                         </div>
                         <h2 className="text-2xl font-serif text-white mb-4">Invite Failed</h2>
-                        <p className="text-neutral-400 text-sm mb-8 bg-black/40 p-4 rounded-xl border border-white/5">{errorMsg}</p>
+                        <p className="text-neutral-400 text-sm mb-8 bg-neutral-950/40 p-4 rounded-xl border border-white/5">{errorMsg}</p>
                         <button 
                             onClick={() => navigate('/dashboard')}
-                            className="bg-white/5 hover:bg-white/10 text-white w-full py-4 rounded-xl font-bold font-mono text-xs uppercase tracking-widest transition-colors border border-white/10"
+                            className="bg-white/5 hover:bg-white/10 text-white w-full py-4 rounded-xl font-bold font-sans text-xs uppercase tracking-widest transition-colors border border-white/10"
                         >
                             Return to Dashboard
                         </button>
