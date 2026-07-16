@@ -6,7 +6,7 @@ import { ProjectMember } from "../models/projectmember.model.js";
 import { z } from "zod";
 import { getIO } from "../socket.js";
 import { redisClient } from "../utils/redis.js";
-import { emailQueue } from "../utils/queue.js";
+import { sendEmailInBackground } from "../utils/queue.js";
 import { createNotification } from "../utils/createNotification.js";
 
 const createTaskSchema = z.object({
@@ -248,7 +248,7 @@ export const assignTask = asyncHandler(async (req, res) => {
 
       // EMAIL: Send assignment email
       const project = await Project.findById(task.projectId);
-      await emailQueue.add('SEND_ASSIGNMENT_EMAIL', {
+      sendEmailInBackground('SEND_ASSIGNMENT_EMAIL', {
           email: assigneeUser.userId.email,
           fullName: assigneeUser.userId.fullName,
           taskTitle: task.title,

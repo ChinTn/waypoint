@@ -16,7 +16,7 @@ import { z } from "zod";
 import crypto from 'crypto';
 import { getIO } from "../socket.js";
 import { redisClient } from "../utils/redis.js";
-import { emailQueue } from "../utils/queue.js";
+import { sendEmailInBackground } from "../utils/queue.js";
 
 const createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -254,7 +254,7 @@ export const generateInviteToken = asyncHandler(async (req, res) => {
 
   if (email) {
       const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/join/${inviteToken}`;
-      await emailQueue.add('SEND_INVITE_EMAIL', {
+      sendEmailInBackground('SEND_INVITE_EMAIL', {
           email,
           projectName: project.name,
           inviteLink
