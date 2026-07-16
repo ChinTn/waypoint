@@ -88,34 +88,20 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
   const { taskId } = req.params;
   const { status, position, priority, title, description, subtasks, clientSentAt } = req.body; 
 
-  if (clientSentAt) {
-    console.log(`① Server received HTTP request at + ${Date.now() - clientSentAt} ms`);
-  }
-
-  const startProcessing = performance.now();
-
-  const taskStart = performance.now();
   const task = await Task.findById(taskId);
-  const taskEnd = performance.now();
-  console.log(`⏱️ DB: Task.findById took ${(taskEnd - taskStart).toFixed(2)} ms`);
-
   if (!task) {
     throw new ApiError(404, "Task not found");
   }
 
-  const memberStart = performance.now();
   const membership = await ProjectMember.findOne({
     projectId: task.projectId,
     userId: req.user._id
   });
-  const memberEnd = performance.now();
-  console.log(`⏱️ DB: ProjectMember.findOne took ${(memberEnd - memberStart).toFixed(2)} ms`);
 
   if (!membership) {
     throw new ApiError(403, "Access denied");
   }
 
-  const expressOverheadStart = performance.now();
   // Update only the fields that were provided
   const updateFields = {};
   if (status) updateFields.status = status;
@@ -126,28 +112,19 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
   if (subtasks !== undefined) updateFields.subtasks = subtasks;
 
   // 1. OPTIMISTIC SOCKET EMISSION
-  // Blast the partial updates to all clients instantly!
   const payload = { 
     _id: taskId,
     projectId: task.projectId,
     ...updateFields,
-    clientSentAt, // Pass this back to the frontend for tracking!
-    updatedBy: req.user._id, // Add this so the frontend knows who triggered the update
+    clientSentAt,
+    updatedBy: req.user._id,
     sentAt: Date.now() 
   };
   getIO().to(task.projectId.toString()).emit("task_updated", payload);
 
-  if (clientSentAt) {
-    console.log(`② Server broadcasted socket at + ${Date.now() - clientSentAt} ms`);
-  }
-
-  const expressOverheadEnd = performance.now();
-  console.log(`⏱️ Server: Express logic + Socket broadcast took ${(expressOverheadEnd - expressOverheadStart).toFixed(2)} ms`);
-  console.log(`🏁 TOTAL Server processing time before HTTP response: ${(expressOverheadEnd - startProcessing).toFixed(2)} ms`);
-
-  // RETURN TO FRONTEND IMMEDIATELY (0ms TTFB overhead)
+  // RETURN TO FRONTEND IMMEDIATELY
   // We don't wait for the heavy DB write, notifications, or Redis cache invalidation
-  res.status(200).json(new ApiResponse(200, { ...task._doc, ...updateFields }, "Task updated (background processing)"));
+  res.status(200).json(new ApiResponse(200, { ...task._doc, ...updateFields }, "Task updated"));
 
   // 2. Perform the heavy DB update in the background
   (async () => {
