@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
+import OAuthSuccess from './pages/OAuthSuccess';
 import HomeDashboard from './pages/HomeDashboard';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectOverview from './pages/ProjectOverview';
@@ -15,6 +16,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/oauth-success" element={<OAuthSuccess />} />
         <Route path="/dashboard" element={<AppLayout><HomeDashboard /></AppLayout>} />
         <Route path="/projects" element={<AppLayout><ProjectsPage /></AppLayout>} />
         <Route path="/my-tasks" element={<AppLayout><MyTasksPage /></AppLayout>} />

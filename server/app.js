@@ -24,6 +24,9 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
+import passport from "./src/utils/passport.js";
+app.use(passport.initialize());
+
 //Importing middleware
 import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 

@@ -160,6 +160,39 @@ export const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
+export const oauthCallback = asyncHandler(async (req, res) => {
+  // Passport already handles finding/creating the user and attaches it to req.user
+  const user = req.user;
+  
+  if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=OAuthFailed`);
+  }
+
+  // Generate Tokens
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user);
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+  // Cache user profile
+  await redisClient.set(`user:${user._id}:profile`, JSON.stringify(loggedInUser), "EX", 24 * 60 * 60);
+
+  // Send in httpOnly cookies
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  };
+
+  // Set cookies
+  res.cookie("accessToken", accessToken, options);
+  res.cookie("refreshToken", refreshToken, options);
+
+  // Redirect to the frontend OAuth success page which will pull the user data
+  // We stringify and encode the user data so the frontend can read it instantly 
+  // without needing a separate /me API call
+  const encodedUser = encodeURIComponent(JSON.stringify(loggedInUser));
+  res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?user=${encodedUser}`);
+});
+
 export const logoutUser = asyncHandler(async (req, res) => {
     // Clear Redis Cache
     await redisClient.del(`user:${req.user._id}:refreshToken`);
