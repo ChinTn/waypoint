@@ -34,7 +34,7 @@ const generateAccessAndRefreshTokens = async (userId, userInstance = null) => {
         return { accessToken, refreshToken };
     } catch (error) {
         console.error("Token Generation Error:", error);
-        throw new ApiError(500, "Something went wrong while generating access and refresh tokens");
+        throw new ApiError(500, `Token generation failed: ${error.message}`);
     }
 };
 
@@ -168,8 +168,8 @@ export const oauthCallback = asyncHandler(async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=OAuthFailed`);
   }
 
-  // Generate Tokens
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user);
+  // Generate Tokens (re-fetch user from DB to guarantee it's a mongoose document)
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
   const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
 
   // Cache user profile
