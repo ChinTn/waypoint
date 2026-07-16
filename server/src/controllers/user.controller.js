@@ -178,7 +178,9 @@ export const oauthCallback = asyncHandler(async (req, res) => {
   // Send in httpOnly cookies
   const options = {
     httpOnly: true,
+    // Require HTTPS in production.
     secure: process.env.NODE_ENV === "production",
+    // Allow cross-domain cookies in production.
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   };
 

@@ -5,9 +5,7 @@ dotenv.config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ==========================================
 // FIRE-AND-FORGET EMAIL HELPER
-// ==========================================
 // Previously this used BullMQ (Redis queue → Worker → send email).
 // BullMQ's internal polling consumed ~100k Redis commands/day even when idle,
 // which is incompatible with Upstash's 500k/month free tier.
